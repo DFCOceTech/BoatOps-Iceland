@@ -24,6 +24,7 @@ dependencies:
   - python-dotenv
   - pip
   - pip:
+      - cachetools
       - cmocean
       - folium
       - suncalc
