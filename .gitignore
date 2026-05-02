@@ -1,0 +1,71 @@
+# Secrets — never commit
+.env
+.env.*
+secrets_config.yml
+*_credentials*
+*_secrets*
+secrets/
+credentials/
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.so
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+coverage/
+.coverage
+
+# Jupyter
+.ipynb_checkpoints/
+*_executed.ipynb
+
+# Data (large files)
+data/raw/
+data/interim/
+data/processed/
+data/external/
+figures/
+*.nc
+*.tif
+*.tiff
+*.geotiff
+*.h5
+*.hdf5
+*.zarr
+
+# Environment
+.conda/
+.venv/
+venv/
+env/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & databases
+*.log
+*.sqlite3
+
+# Geospatial intermediates
+*.shp
+*.dbf
+*.shx
+*.prj
+*.cpg
+*.gpkg
