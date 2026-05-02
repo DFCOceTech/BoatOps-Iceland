@@ -6,7 +6,7 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 **S01-06 Map layers notebook — Epic 01 complete**
 
-- **S01-06 ✅** `06_map_layers.ipynb`: OSM + OpenSeaMap tiles confirmed; synthetic raster PNG data URI as ImageOverlay; GEBCO WMS confirmed (`GEBCO_LATEST` at `https://wms.gebco.net/mapserv` — old URL returns 404); EMODnet Seabed Habitats WMS confirmed (`eusm_helcom_group` — `eusm2022` no longer exists, service restructured to per-scale layers; `_full`-suffix layers blank at overview zoom); combined ipyleaflet map with LayersControl; all 6 SCENARIO-MAP assertions PASS
+- **S01-06 ✅** `06_map_layers.ipynb`: OSM + OpenSeaMap tiles confirmed; synthetic raster PNG data URI as ImageOverlay; GEBCO WMS confirmed (`GEBCO_LATEST` at `https://wms.gebco.net/mapserv` — old URL returns 404); EMODnet Seabed Habitats WMS confirmed (`eusm_helcom_group` — `eusm2022` no longer exists, service restructured to per-scale layers); data layer overlays: Open-Meteo wind quiver (3×3 grid, 4.7–14.0 m/s), CMEMS Hs colour-map (150×198 grid, 0.03–0.72 m, land transparent), Sentinel-2 true-colour mosaic (574 KB via SH Process API); all 9 SCENARIO-MAP assertions PASS
 - **FR-17 / FR-18 added**: GEBCO and EMODnet added as SHOULD-priority map layer requirements; PRD, spec, traceability updated
 - **Epic 01 ✅ Complete** — all 6 Phase 1 notebook stories done
 

@@ -29,6 +29,15 @@ Users SHALL be able to add a custom WMS or WMTS layer by providing a service URL
 ### REQ-MAP-007: GEBCO Bathymetry Layer
 The system SHALL provide a toggleable GEBCO bathymetry overlay sourced from the GEBCO WMS (`https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv`), displaying the `GEBCO_LATEST` layer (2023 15-arc-second grid). The layer SHALL be styled to show water depth in colour over the Baltic AOI.
 
+### REQ-MAP-009: Wind Field Overlay
+The system SHALL render wind speed and direction from the Open-Meteo forecast as a vector-field ImageOverlay covering the AOI bbox, updated for the active planning time. Wind vectors SHALL encode both speed (colour) and direction (arrow).
+
+### REQ-MAP-010: Wave Height Overlay
+The system SHALL render CMEMS significant wave height (Hs) as a colour-mapped ImageOverlay covering the AOI bbox, with land/masked cells rendered transparent.
+
+### REQ-MAP-011: Sentinel-2 Imagery Overlay
+The system SHALL fetch the least-cloud-cover Sentinel-2 Level-2A true-colour mosaic via the CDSE Sentinel Hub Process API and render it as an ImageOverlay on the map.
+
 ### REQ-MAP-008: EMODnet Seabed Habitats Layer
 The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced from the EMODnet WMS (`https://ows.emodnet-seabedhabitats.eu/geoserver/emodnet_view/wms`), displaying the `eusm_helcom_group` HELCOM Baltic seabed habitat classification layer. The layer SHALL be available for the Baltic Sea coverage area.
 
@@ -69,6 +78,21 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 **WHEN** the EMODnet Seabed Habitats toggle is enabled  
 **THEN** the EUSM 2022 WMS layer loads without authentication, renders habitat classification polygons over the Baltic, and the GetCapabilities response confirms layer availability
 
+### SCENARIO-MAP-WIND-OVERLAY-001: Wind field renders as ImageOverlay
+**GIVEN** Open-Meteo wind forecasts fetched at a 3×3 sample grid over the Baltic AOI  
+**WHEN** the wind vectors are rendered to a transparent PNG and added as an ImageOverlay  
+**THEN** the overlay displays on the map without error; grid shape is (3, 3); data URI is a valid PNG
+
+### SCENARIO-MAP-WAVE-OVERLAY-001: Wave height renders as ImageOverlay
+**GIVEN** CMEMS VHM0 data for the current forecast hour over the Baltic AOI  
+**WHEN** the gridded Hs array is colour-mapped to a PNG (NaN cells transparent) and added as an ImageOverlay  
+**THEN** the overlay displays on the map; Hs values are in [0, 10] m; the array is not all-NaN
+
+### SCENARIO-MAP-S2-OVERLAY-001: Sentinel-2 imagery renders as ImageOverlay
+**GIVEN** a valid CDSE OAuth2 token  
+**WHEN** the least-cloud-cover Sentinel-2 L2A mosaic is requested via the SH Process API for the AOI bbox  
+**THEN** the response is HTTP 200 with `image/png` content; the PNG is added as an ImageOverlay; file size > 10 KB
+
 ## Data Contracts
 
 ### Inputs
@@ -78,6 +102,9 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 | OpenSeaMap tiles | `https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png` | No auth |
 | GEBCO WMS | `https://wms.gebco.net/mapserv` | No auth; layer: `GEBCO_LATEST` |
 | EMODnet Seabed Habitats WMS | `https://ows.emodnet-seabedhabitats.eu/geoserver/emodnet_view/wms` | No auth; layer: `eusm_helcom_group` |
+| Open-Meteo wind grid | `https://api.open-meteo.com/v1/forecast` | No auth; `wind_speed_10m`, `wind_direction_10m`; one request per grid point |
+| CMEMS Baltic Wave | `copernicusmarine.open_dataset` | CMEMS credentials in `.env`; dataset `cmems_mod_bal_wav_anfc_PT1H-i`; variable `VHM0` |
+| CDSE SH Process API | `https://sh.dataspace.copernicus.eu/api/v1/process` | CDSE OAuth2 Bearer token; Sentinel-2 L2A least-CC mosaic |
 | User GeoTIFF | File upload | Must be georeferenced; server-side CRS validation |
 | WMS/WMTS URL | User input | Validated before fetch |
 

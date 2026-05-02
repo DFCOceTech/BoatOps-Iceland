@@ -13,13 +13,13 @@
 | FR-05 | `map` | Epic 01 | Partial | Notebook done (GEBCO, EMODnet validated as WMS layers) |
 | FR-17 | `map` | Epic 01 | Partial | GEBCO WMS confirmed; URL corrected to `wms.gebco.net/mapserv` |
 | FR-18 | `map` | Epic 01 | Partial | EMODnet WMS confirmed; layer `eusm_helcom_group` (eusm2022 no longer exists) |
-| FR-06 | `weather` | Epic 01 | Partial | Notebook done; MeteoAlarm advisory polygons need DWD WFS |
+| FR-06 | `weather` | Epic 01 | Partial | Notebook done; wind rendered as map overlay (s01-06); MeteoAlarm advisory polygons need DWD WFS |
 | FR-07 | `weather` | Epic 01 | Partial | Notebook done |
 | FR-08 | `weather` | Epic 01 | Partial | Notebook done |
 | FR-09 | `weather` | Epic 01 | Partial | Notebook done; cloud cover reused by satellite capability |
 | FR-10 | `weather` | Epic 01 | Partial | MeteoAlarm text-only; no polygon geometry in Atom feed |
 | FR-11 | `solar` | Epic 01 | Partial | Notebook done; USNO accuracy validation pending |
-| FR-12 | `waves` | Epic 01 | Partial | Notebook done; nearest-wet-cell fallback needed in Phase 2 |
+| FR-12 | `waves` | Epic 01 | Partial | Notebook done; Hs rendered as map overlay (s01-06); nearest-wet-cell fallback needed in Phase 2 |
 | FR-13 | `waves` | Epic 01 | Partial | Notebook done |
 | FR-14 | `satellite` | Epic 01 | Partial | Notebook done; TLE prediction for 6 platforms |
 | FR-15 | `satellite` | Epic 01 | Partial | Notebook done; partial tile filter, Process API rendering |
@@ -90,3 +90,6 @@ Epic 01 (Phase 1 Notebooks) → Epic 02 (Phase 2 FastAPI) → Epic 03 (Phase 3 F
 | SCENARIO-MAP-WMS-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
 | SCENARIO-MAP-GEBCO-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
 | SCENARIO-MAP-EMODNET-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-WIND-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-WAVE-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-S2-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
