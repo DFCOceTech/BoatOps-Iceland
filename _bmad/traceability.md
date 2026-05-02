@@ -13,6 +13,11 @@
 | FR-05 | `map` | Epic 01 | Partial | Notebook done (GEBCO, EMODnet validated as WMS layers) |
 | FR-17 | `map` | Epic 01 | Partial | GEBCO WMS confirmed; URL corrected to `wms.gebco.net/mapserv` |
 | FR-18 | `map` | Epic 01 | Partial | EMODnet WMS confirmed; layer `eusm_helcom_group` (eusm2022 no longer exists) |
+| FR-19 | `map` | Epic 01 | Partial | SST L4 overlay confirmed; DMI NRT product |
+| FR-20 | `map` | Epic 01 | Partial | Salinity overlay confirmed; CMEMS Baltic Physics |
+| FR-21 | `map` | Epic 01 | Partial | Surface current quiver overlay confirmed; CMEMS Baltic Physics |
+| FR-22 | `map` | Epic 01 | Partial | Chlorophyll log-scale overlay confirmed; CMEMS Baltic BGC |
+| FR-23 | `map` | Epic 01 | Partial | Bottom oxygen overlay confirmed; `o2b` pre-computed; hypoxia threshold visible |
 | FR-06 | `weather` | Epic 01 | Partial | Notebook done; wind rendered as map overlay (s01-06); MeteoAlarm advisory polygons need DWD WFS |
 | FR-07 | `weather` | Epic 01 | Partial | Notebook done |
 | FR-08 | `weather` | Epic 01 | Partial | Notebook done |
@@ -93,3 +98,8 @@ Epic 01 (Phase 1 Notebooks) → Epic 02 (Phase 2 FastAPI) → Epic 03 (Phase 3 F
 | SCENARIO-MAP-WIND-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
 | SCENARIO-MAP-WAVE-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
 | SCENARIO-MAP-S2-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-SST-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-SAL-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-CUR-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-CHL-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |
+| SCENARIO-MAP-O2B-OVERLAY-001 | PASS | `notebooks/06_map_layers.ipynb` nbconvert |

@@ -24,6 +24,11 @@
 | FR-16 | AI-generated Go/No-Go assessment via Claude API with verdict, risk factors, optimal time windows, PDF export | MAY | `ai-synthesis` |
 | FR-17 | GEBCO bathymetry layer (GEBCO 2023 15-arc-second grid) as toggleable WMS overlay | SHOULD | `map` |
 | FR-18 | EMODnet Seabed Habitats layer (EUSM broad-scale habitat classification) as toggleable WMS overlay | SHOULD | `map` |
+| FR-19 | Baltic Sea SST L4 (DMI NRT satellite-derived, gap-filled) as toggleable map overlay | SHOULD | `map` |
+| FR-20 | Baltic Sea surface salinity from CMEMS physics model as toggleable map overlay | SHOULD | `map` |
+| FR-21 | Baltic Sea surface current vectors from CMEMS physics model as toggleable map overlay | SHOULD | `map` |
+| FR-22 | Baltic Sea surface chlorophyll-a from CMEMS BGC model as toggleable map overlay (log scale) | SHOULD | `map` |
+| FR-23 | Baltic Sea bottom dissolved oxygen from CMEMS BGC model as toggleable map overlay; hypoxia threshold marked | SHOULD | `map` |
 
 ## Non-Functional Requirements
 
@@ -57,7 +62,7 @@
 
 | PRD Requirement(s) | OpenSpec Capability | Epic |
 |--------------------|---------------------|------|
-| FR-01 – FR-05, FR-17, FR-18 | `map` | Epic 1 (story s01-06), Epic 2 |
+| FR-01 – FR-05, FR-17 – FR-23 | `map` | Epic 1 (story s01-06), Epic 2 |
 | FR-06 – FR-10 | `weather` | Epic 1 (story s01-01), Epic 2 |
 | FR-11 | `solar` | Epic 1 (story s01-03), Epic 2 |
 | FR-12 – FR-13 | `waves` | Epic 1 (story s01-02), Epic 2 |
