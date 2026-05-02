@@ -4,6 +4,16 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-02
 
+**S01-06 visualization rewrite — cmocean + Leaflet.velocity**
+
+- All colormaps replaced with cmocean perceptually uniform palettes: `deep` (bathymetry), `amp` (waves), `thermal` (SST), `haline` (salinity), `speed` (currents), `algae` (chlorophyll), `oxy` (bottom O₂)
+- GEBCO WMS and EMODnet Bathymetry WMS both found fully opaque (alpha=255 on all pixels); replaced with `deptho` from `cmems_mod_bal_phy_anfc_static` — NaN=land → transparent marine-only overlay
+- ipyleaflet 0.20 lacks VelocityLayer; implemented Leaflet.velocity animated particle maps using folium + jsdelivr CDN (v1.9.1); windy.com-style visualizations for surface currents and wave propagation
+- Sentinel-2: switched from cloud-free mosaic to single scene query (OData `$orderby ContentDate/Start desc`, `cloudCover lt 20`) followed by time-matched SH Process API render
+- Chlorophyll plotted on log scale (`LogNorm(vmin=0.1, vmax=50)`) via cmocean.algae
+- Combined map updated: GEBCO WMSLayer → `bathy_uri` ImageOverlay; `cur_uri` quiver removed (animated velocity map handles currents)
+- `cmocean` and `folium` added to `environment.yml`; all 14 SCENARIO-MAP assertions PASS
+
 **S01-06 Map layers notebook — Epic 01 complete**
 
 - **S01-06 ✅** `06_map_layers.ipynb`: OSM + OpenSeaMap tiles; GEBCO WMS (`GEBCO_LATEST`, new URL); EMODnet WMS (`eusm_helcom_group`); GeoTIFF ImageOverlay pattern; data overlays: wind quiver, CMEMS Hs, Sentinel-2 (574 KB); CMEMS oceanographic overlays: SST L4 (6.1–12.5 °C), salinity (0–20.4 PSU), currents (0–0.33 m/s), chlorophyll log-scale (0.05–149 mg/m³), bottom O2 (0–474 mmol/m³); all 14 SCENARIO-MAP assertions PASS; combined map has 12 toggleable layers

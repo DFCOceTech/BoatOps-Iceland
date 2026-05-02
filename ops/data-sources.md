@@ -27,6 +27,7 @@
 | CMEMS Baltic SST L4 | `copernicusmarine.open_dataset` | CMEMS credentials | Daily NRT | Dataset: `DMI-BALTIC-SST-L4-NRT-OBS_FULL_TIME_SERIE`; product `SST_BAL_SST_L4_NRT_OBSERVATIONS_010_007_b`; variable `analysed_sst` in Kelvin (subtract 273.15); no depth dim |
 | CMEMS Baltic Physics | `copernicusmarine.open_dataset` | CMEMS credentials | Daily mean | Dataset: `cmems_mod_bal_phy_anfc_P1D-m`; product `BALTICSEA_ANALYSISFORECAST_PHY_003_006`; variables: `so` (salinity PSU), `uo`/`vo` (currents m/s), `thetao` (temp °C), `o2b`? No — physics has no BGC. Surface at `depth[0]` ≈ 0.5 m |
 | CMEMS Baltic BGC | `copernicusmarine.open_dataset` | CMEMS credentials | Daily mean | Dataset: `cmems_mod_bal_bgc_anfc_P1D-m`; product `BALTICSEA_ANALYSISFORECAST_BGC_003_007`; variables: `chl` (mg/m³, depth[0]), `o2b` (mmol/m³, 2-D bottom value — no depth dim); hypoxia threshold ≈ 63 mmol/m³ |
+| CMEMS Baltic Physics Static | `copernicusmarine.open_dataset` | CMEMS credentials | Static (no time dim) | Dataset: `cmems_mod_bal_phy_anfc_static`; variable: `deptho` (ocean bottom depth m, NaN=land); 150×198 grid, 3.1–79.6 m; used for transparent marine bathymetry overlay instead of GEBCO/EMODnet WMS (both return fully opaque images) |
 | EMODnet Seabed Habitats WMS | `https://ows.emodnet-seabedhabitats.eu/geoserver/emodnet_view/wms` | No auth | Updated with new surveys | Layer: `eusm_helcom_group` (HELCOM Baltic classification, multi-scale); `eusm2022` monolithic layer no longer exists; `_full`-suffix layers blank at overview zoom |
 | Claude API | `https://api.anthropic.com/v1/messages` | Anthropic API key | On demand | AI synthesis; use `claude-sonnet-4-6`; prompt caching for system prompt |
 | SunCalc (Python) | Local library call | None | N/A | Deterministic solar geometry; no network required |
@@ -91,8 +92,10 @@ copernicusmarine.subset(
 | MeteoAlarm Atom feed | No polygon geometry — area in plain text only | DWD WFS or EUMETNET GeoJSON API needed for map overlays |
 | Open-Meteo wind direction | Can return exactly 360° (due north) | Use `<= 360` in bounds check, not `< 360` |
 | GEBCO WMS | Old URL `gebco.net/.../mapserv` returns 404 | Use `https://wms.gebco.net/mapserv` |
+| GEBCO/EMODnet Bathymetry WMS | All pixels alpha=255 (land fully opaque) — cannot be used as transparent overlay | Use `deptho` from `cmems_mod_bal_phy_anfc_static`; NaN=land → transparent |
 | EMODnet Seabed Habitats | Monolithic `eusm2022` layer no longer exists | Use `eusm_helcom_group` (Baltic) or `eusm_bio_group` (pan-European) |
 | EMODnet `_full`-suffix layers | Return blank image at overview zoom | Use `_group`-suffix layers for multi-scale display |
+| ipyleaflet 0.20 VelocityLayer | Not available in ipyleaflet 0.20 | Use folium + leaflet-velocity CDN (jsdelivr v1.9.1) for animated particle fields |
 
 ## Known Data Issues
 

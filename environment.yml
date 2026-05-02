@@ -24,6 +24,8 @@ dependencies:
   - python-dotenv
   - pip
   - pip:
+      - cmocean
+      - folium
       - suncalc
       - skyfield
       - sgp4
