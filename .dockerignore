@@ -1,0 +1,52 @@
+# Build context exclusions — keeps the image small and clean.
+# These are excluded from the context sent to the Docker daemon,
+# so they are never available to COPY instructions even if referenced.
+
+# Python bytecode (wrong version gets compiled on dev machine)
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.egg-info
+
+# Version control
+.git
+.gitignore
+
+# Secrets — never in image
+.env
+.env.*
+!.env.example
+
+# Development-only directories
+tests/
+notebooks/
+data/
+figures/
+.venv/
+.conda/
+frontend/node_modules/
+frontend/dist/          # not needed in the API image
+frontend/playwright-report/
+frontend/test-results/
+
+# Large geospatial data files
+*.nc
+*.tif
+*.tiff
+*.geotiff
+*.h5
+*.hdf5
+*.zarr
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Docs (not needed at runtime)
+_bmad/
+openspec/
+epics/
+ops/

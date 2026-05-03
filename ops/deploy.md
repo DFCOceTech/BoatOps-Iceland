@@ -146,3 +146,5 @@ For a planning tool with occasional (not continuous) use, a 2-core / 4 GB VPS is
 | `docker compose build` fails with `PackageNotFoundError` | conda-forge package unavailable | Pin the failing package to a known-good version in `deploy/environment-prod.yml` |
 | Frontend shows blank map | MapLibre GL JS needs WebGL | Ensure the browser has hardware acceleration enabled |
 | `/api/*` returns 502 | API container not yet healthy | Wait for `docker compose ps` to show api as `healthy`; check `docker compose logs api` |
+| App serves blank page (no JS/CSS loaded) | `frontend/dist/` is empty or missing | Run `cd frontend && npm ci && npm run build` then `docker compose restart web` |
+| API container crashes at startup with `ValidationError` on `cors_origins` | `CORS_ORIGINS` set as a bare string (e.g. `https://...`) instead of a JSON array | Use JSON array syntax: `CORS_ORIGINS=["https://yourhost.example.com"]` |
