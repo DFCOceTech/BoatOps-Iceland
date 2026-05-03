@@ -130,9 +130,35 @@ export const getSatelliteOverpasses = (bbox = AOI, days = 7) =>
     `/api/satellite/overpasses?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}&days=${days}`
   )
 
-export const getS2Overlay = (bbox = AOI, cloudMax = 20) =>
-  fetchPng(
-    `/api/satellite/s2-overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}&cloud_max=${cloudMax}`
+// S2 overlay returns satellite-specific headers (not X-Timestamp / X-Colorscale).
+export interface S2OverlayResult {
+  blob: Blob
+  bbox: [number, number, number, number]
+  sceneId: string
+  acquisitionTime: string
+  cloudCoverPct: number | null
+}
+
+async function fetchS2Png(path: string, signal?: AbortSignal): Promise<S2OverlayResult> {
+  const res = await fetch(path, signal ? { signal } : undefined)
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`)
+  const blob = await res.blob()
+  const bboxStr = res.headers.get('x-bbox') ?? '9.5,53.5,15.0,56.0'
+  const bboxRaw = bboxStr.split(',').map(Number)
+  if (bboxRaw.length !== 4 || bboxRaw.some(isNaN))
+    throw new Error(`Malformed X-Bbox header: "${bboxStr}"`)
+  const bbox = bboxRaw as [number, number, number, number]
+  const sceneId = res.headers.get('x-scene-id') ?? ''
+  const acquisitionTime = res.headers.get('x-acquisition-time') ?? ''
+  const cloudRaw = res.headers.get('x-cloud-cover')
+  const cloudCoverPct = cloudRaw && cloudRaw !== '' ? parseFloat(cloudRaw) : null
+  return { blob, bbox, sceneId, acquisitionTime, cloudCoverPct }
+}
+
+export const getS2Overlay = (bbox = AOI, cloudMax = 20, signal?: AbortSignal) =>
+  fetchS2Png(
+    `/api/satellite/s2-overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}&cloud_max=${cloudMax}`,
+    signal
   )
 
 // ── /api/map ─────────────────────────────────────────────────────────────────

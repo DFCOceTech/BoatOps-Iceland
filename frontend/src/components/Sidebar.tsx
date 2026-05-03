@@ -3,6 +3,8 @@ import LayerPanel from './LayerPanel'
 import OceanLayerPanel from './OceanLayerPanel'
 import WeatherPanel from './WeatherPanel'
 import WavePanel from './WavePanel'
+import SolarPanel from './SolarPanel'
+import SatellitePanel from './SatellitePanel'
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -61,6 +63,8 @@ export default function Sidebar() {
         <OceanLayerPanel />
         <WeatherPanel />
         <WavePanel />
+        <SolarPanel />
+        <SatellitePanel />
       </div>
     </aside>
   )
