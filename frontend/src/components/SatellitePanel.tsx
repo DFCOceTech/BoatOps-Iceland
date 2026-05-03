@@ -10,9 +10,15 @@ const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
 const BERLIN_TZ = 'Europe/Berlin'
 const S2_LAYER_ID = 'api-s2-overlay'
 
+// Python isoformat() emits "+00:00" not "Z"; handle both without appending Z blindly.
+function parseIso(iso: string): Date {
+  return (iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso))
+    ? new Date(iso)
+    : new Date(iso + 'Z')
+}
+
 function toLocalDayTime(isoUtc: string): string {
-  const iso = isoUtc.endsWith('Z') ? isoUtc : isoUtc + 'Z'
-  const d = new Date(iso)
+  const d = parseIso(isoUtc)
   const day = new Intl.DateTimeFormat('en-GB', { timeZone: BERLIN_TZ, weekday: 'short' }).format(d)
   const time = new Intl.DateTimeFormat('en-GB', {
     timeZone: BERLIN_TZ, hour: '2-digit', minute: '2-digit',
@@ -55,9 +61,9 @@ function groupByPlatform(passes: Overpass[]): { platform: string; passes: Overpa
 // Full per-pass solar elevation requires a backend schema change to Overpass.
 function isDaylightPass(aoUtc: string, sunrise: string | null, sunset: string | null): boolean {
   if (!sunrise || !sunset) return false
-  const t    = new Date(aoUtc.endsWith('Z')   ? aoUtc   : aoUtc   + 'Z').getTime()
-  const rise = new Date(sunrise.endsWith('Z') ? sunrise : sunrise + 'Z').getTime()
-  const set  = new Date(sunset.endsWith('Z')  ? sunset  : sunset  + 'Z').getTime()
+  const t    = parseIso(aoUtc).getTime()
+  const rise = parseIso(sunrise).getTime()
+  const set  = parseIso(sunset).getTime()
   return t >= rise && t <= set
 }
 
@@ -288,11 +294,7 @@ export default function SatellitePanel() {
         <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, paddingLeft: 23 }}>
           <span style={S.metaBadge}>
             {s2.meta.acquisitionTime
-              ? new Date(
-                  s2.meta.acquisitionTime.endsWith('Z')
-                    ? s2.meta.acquisitionTime
-                    : s2.meta.acquisitionTime + 'Z'
-                ).toLocaleDateString('en-GB', {
+              ? parseIso(s2.meta.acquisitionTime).toLocaleDateString('en-GB', {
                   day: '2-digit', month: 'short', year: 'numeric',
                 })
               : '—'}

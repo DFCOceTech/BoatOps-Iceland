@@ -6,12 +6,21 @@ import { useGoNoGo } from '../context/GoNoGoContext'
 const CENTER = { lat: 54.18, lon: 12.08 }
 const BERLIN_TZ = 'Europe/Berlin'
 
+// Python isoformat() emits "+00:00" not "Z"; new Date() handles both correctly.
+// Only bare strings (no timezone) need a "Z" appended to be treated as UTC.
+function parseIso(iso: string): Date {
+  return (iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso))
+    ? new Date(iso)
+    : new Date(iso + 'Z')
+}
+
 function toLocalTime(isoUtc: string | null): string {
   if (!isoUtc) return '—'
-  const iso = isoUtc.endsWith('Z') ? isoUtc : isoUtc + 'Z'
+  const d = parseIso(isoUtc)
+  if (isNaN(d.getTime())) return '—'
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: BERLIN_TZ, hour: '2-digit', minute: '2-digit',
-  }).format(new Date(iso))
+  }).format(d)
 }
 
 const PERIOD_LABELS: Record<string, string> = {

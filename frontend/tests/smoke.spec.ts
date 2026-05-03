@@ -35,26 +35,28 @@ const MOCK_WAVES = {
   timestamp: '2026-05-03T06:00',
 }
 
+// Use +00:00 format (what Python's isoformat() actually emits) to catch the
+// "endsWith('Z') ? iso : iso+'Z'" bug that crashed the app in production.
 const MOCK_SOLAR_TIMES = {
   date: '2026-05-03', lat: 54.18, lon: 12.08,
-  sunrise: '2026-05-03T03:42:00', sunset:  '2026-05-03T19:18:00',
-  solar_noon: '2026-05-03T11:30:00',
-  dawn_civil:  '2026-05-03T03:08:00', dusk_civil:  '2026-05-03T19:52:00',
-  dawn_nautical: '2026-05-03T02:22:00', dusk_nautical: '2026-05-03T20:38:00',
-  dawn_astronomical: '2026-05-03T01:21:00', dusk_astronomical: '2026-05-03T21:39:00',
+  sunrise: '2026-05-03T03:42:00+00:00', sunset:  '2026-05-03T19:18:00+00:00',
+  solar_noon: '2026-05-03T11:30:00+00:00',
+  dawn_civil:  '2026-05-03T03:08:00+00:00', dusk_civil:  '2026-05-03T19:52:00+00:00',
+  dawn_nautical: '2026-05-03T02:22:00+00:00', dusk_nautical: '2026-05-03T20:38:00+00:00',
+  dawn_astronomical: '2026-05-03T01:21:00+00:00', dusk_astronomical: '2026-05-03T21:39:00+00:00',
 }
 
 const MOCK_SOLAR_ELEVATION = {
   elevation_deg: 42.3, azimuth_deg: 185.0,
   is_daylight: true, period: 'day',
-  timestamp: '2026-05-03T10:00:00',
+  timestamp: '2026-05-03T10:00:00+00:00',
 }
 
 const MOCK_OVERPASSES = [
-  { platform: 'Sentinel-2A', aos_utc: '2026-05-03T09:12:00',
-    los_utc: '2026-05-03T09:22:00', max_elevation_deg: 67.4, duration_min: 10.2 },
-  { platform: 'Landsat-9', aos_utc: '2026-05-03T14:05:00',
-    los_utc: '2026-05-03T14:14:00', max_elevation_deg: 41.8, duration_min: 8.7 },
+  { platform: 'Sentinel-2A', aos_utc: '2026-05-03T09:12:00+00:00',
+    los_utc: '2026-05-03T09:22:00+00:00', max_elevation_deg: 67.4, duration_min: 10.2 },
+  { platform: 'Landsat-9', aos_utc: '2026-05-03T14:05:00+00:00',
+    los_utc: '2026-05-03T14:14:00+00:00', max_elevation_deg: 41.8, duration_min: 8.7 },
 ]
 
 // Minimal valid 1×1 transparent PNG
