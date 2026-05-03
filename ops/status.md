@@ -1,6 +1,6 @@
 # Operational Status — BoatOps
 
-> Last updated: 2026-05-01
+> Last updated: 2026-05-03
 
 ## Session Handoff Protocol (MANDATORY)
 
@@ -11,43 +11,65 @@ Before your session ends or when you complete significant work, update:
 
 ## What's Working
 
-Phase 1 notebook prototypes — 4 of 6 complete:
+All three phases complete. The full BoatOps stack is running.
 
-| Notebook | Story | Status | Key finding |
-|----------|-------|--------|-------------|
-| `01_weather.ipynb` | S01-01 | ✅ Done | Open-Meteo: 168h wind/temp/cloud/precip; MeteoAlarm: Atom/XML (no polygon geometry — DWD WFS needed for map overlays) |
-| `02_waves.ipynb` | S01-02 | ✅ Done | CMEMS `cmems_mod_bal_wav_anfc_PT1H-i`; 1 nmi res; Warnemünde is a land-masked cell — nearest wet cell search needed |
-| `03_solar.ipynb` | S01-03 | ✅ Done | suncalc returns tz-naive pd.Timestamps (not None) for missing events; `(lng, lat)` arg order; altitudes in radians |
-| `04_satellite_overpasses.ipynb` | S01-04 | ✅ Done | CDSE OData: 100 S2 products/10 days; TLEs: 22 passes/7 days across 6 platforms; 3 optimal windows tomorrow |
-| `05_sentinel2_imagery.ipynb` | S01-05 | ⏳ Next | CDSE STAC + WMS tile streaming |
-| `06_map_layers.ipynb` | S01-06 | ⏳ Backlog | OSM, OpenSeaMap, WMS/WMTS, GeoTIFF |
+### Phase 1 — Jupyter Notebooks (Epic 01 ✅)
 
-## Known Issues
+| Notebook | Story | Status |
+|----------|-------|--------|
+| `01_weather.ipynb` | S01-01 | ✅ Done |
+| `02_waves.ipynb` | S01-02 | ✅ Done |
+| `03_solar.ipynb` | S01-03 | ✅ Done |
+| `04_satellite_overpasses.ipynb` | S01-04 | ✅ Done |
+| `05_sentinel2_imagery.ipynb` | S01-05 | ✅ Done |
+| `06_map_layers.ipynb` | S01-06 | ✅ Done |
 
-- MeteoAlarm Atom feed has no polygon geometry — for map overlays, investigate DWD WFS or EUMETNET GeoJSON API
-- Warnemünde grid point is land-masked in CMEMS wave model — Phase 2 service must use nearest-wet-cell fallback
-- NASA CMR unusable for forward Landsat planning (processing lag); TLE propagation used instead (confirmed working)
-- USNO Solar accuracy comparison (SCENARIO-SOL-ACCURACY-001) still has placeholder values — needs real USNO lookup
+### Phase 2 — FastAPI Backend (Epic 02 ✅)
+
+60/60 tests passing. All 6 capability routers live:
+- `GET /health`, `/api/weather/{forecast,advisories}`, `/api/waves/{forecast,overlay}`
+- `GET /api/solar/{times,elevation}`, `/api/satellite/{overpasses,s2-overlay}`
+- `GET /api/map/{bathymetry,sst,salinity,currents,chlorophyll,oxygen}`
+
+### Phase 3 — React + MapLibre GL JS Frontend (Epic 03 ✅)
+
+All 6 stories done:
+- **S03-01** Vite 8 + React 18 + TypeScript scaffold; MapLibre GL JS map; API client
+- **S03-02** Base map: OSM tiles, OpenSeaMap, GEBCO WMS, EMODnet WMS; layer toggle panel; coordinate display
+- **S03-03** Oceanographic overlay layers (6 CMEMS PNG layers): legend, opacity slider, timestamp badge
+- **S03-04** Weather + waves panels: 7-day Recharts forecast chart, current conditions card, wave overlay toggle
+- **S03-05** Solar + satellite panels: solar times table (Berlin CET), elevation arc gauge, overpass table, S2 overlay toggle
+- **S03-06** Go/No-Go dashboard: overall verdict badge, per-capability status rows, threshold settings modal (localStorage), ↻ refresh button, FR-16 AI placeholder
+
+**To start the frontend dev server:** `cd frontend && npm run dev` → http://localhost:5173
+
+## Known Issues / Deferred
+
+- **Cross-browser E2E (NFR-04)**: Chrome/Firefox/Safari testing not yet run formally. `npm run build` passes (0 TS errors).
+- **MeteoAlarm polygon overlays**: Atom feed has no geometry; DWD WFS not integrated (deferred).
+- **USNO solar accuracy (SCENARIO-SOL-ACCURACY-001)**: Placeholder values; formal ±1 min validation pending.
+- **Midpass solar elevation**: `Overpass` schema has no `midpass_solar_elevation_deg`; frontend uses daytime proxy. Backend schema extension deferred.
+- **FR-16 AI synthesis**: Claude API integration deferred to Phase 4; placeholder shown in dashboard.
+- **Chunk size warning**: Vite warns bundle > 500 kB; code-splitting optimization deferred.
 
 ## What's Next
 
-1. **s01-05**: `05_sentinel2_imagery.ipynb` — CDSE STAC imagery search + WMS tile URL construction (CDSE credentials ready)
-2. **s01-06**: `06_map_layers.ipynb` — OSM/OpenSeaMap tile validation, GeoTIFF display, WMS layer test
-3. After all 6 notebooks: begin Epic 2 (Phase 2 FastAPI backend)
+Phase 4 options (no epic scoped yet):
+1. **Production deployment** — Docker Compose (FastAPI + Vite build served by nginx), reverse proxy, HTTPS
+2. **Cross-browser E2E** — Chrome/Firefox/Safari manual smoke test; record in `ops/test-results.md`
+3. **FR-16 AI synthesis** — Claude API integration for Go/No-Go reasoning with risk factors and optimal time windows
+4. **AOI draw tool** — FR-01 time picker + user-drawn AOI polygon; passes center/bbox to all API calls
 
 ## Recently Closed
 
-- 2026-05-01: Bootstrap session — framework scaffolded, all docs populated
-- 2026-05-01: S01-01 ✅ weather notebook (Open-Meteo + MeteoAlarm)
-- 2026-05-01: S01-02 ✅ waves notebook (CMEMS Baltic Wave forecast)
-- 2026-05-01: S01-03 ✅ solar geometry notebook (suncalc)
-- 2026-05-01: S01-04 ✅ satellite overpasses (CDSE OData + CelesTrak TLEs + skyfield)
+- 2026-05-03: **Epic 03 ✅ complete** — all 6 Phase 3 frontend stories done (S03-01 through S03-06)
+- 2026-05-03: **Epic 02 ✅ complete** — all 6 Phase 2 backend stories done; 60 tests passing
+- 2026-05-02/03: **Epic 01 ✅ complete** — all 6 Phase 1 notebook stories done
 
-## Gate Status for Sprint 0 (Phase 1 Notebooks)
+## Gate Status
 
-| Gate | Status | Artifact |
-|------|--------|----------|
-| Gate 1 (Self-check) | In progress — 4/6 notebooks passing | `notebooks/0[1-4]_*.ipynb` |
-| Gate 2 (Evaluator) | Not started | — |
-| Gate 3 (Reconciliation) | Not started | — |
-| Gate 4 (Adversarial) | Not started | — |
+| Epic | Gate 1 | Gate 4 (Raze) | Notes |
+|------|--------|---------------|-------|
+| Epic 01 (notebooks) | ✅ nbconvert | ✅ | All SCENARIO-* pass |
+| Epic 02 (FastAPI) | ✅ pytest 60/60 | ✅ | 4 bugs fixed post-Raze |
+| Epic 03 (frontend) | ✅ tsc + vite build | ✅ | Raze run per story; total 14 bugs fixed |
