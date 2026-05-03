@@ -55,13 +55,13 @@ All 6 stories done:
 ## What's Next
 
 Phase 4 options (no epic scoped yet):
-1. **Production deployment** — Docker Compose (FastAPI + Vite build served by nginx), reverse proxy, HTTPS
-2. **Cross-browser E2E** — Chrome/Firefox/Safari manual smoke test; record in `ops/test-results.md`
-3. **FR-16 AI synthesis** — Claude API integration for Go/No-Go reasoning with risk factors and optimal time windows
-4. **AOI draw tool** — FR-01 time picker + user-drawn AOI polygon; passes center/bbox to all API calls
+1. **FR-16 AI synthesis** — Claude API integration for Go/No-Go reasoning with risk factors and optimal time windows
+2. **AOI draw tool** — FR-01 time picker + user-drawn AOI polygon; passes center/bbox to all API calls
+3. **NFR-01 load test** — multi-user concurrent sessions; currently untested
 
 ## Recently Closed
 
+- 2026-05-03: **Production deployment ✅** — Docker Compose; `docker compose up -d` starts the full stack at port 80
 - 2026-05-03: **Epic 03 ✅ complete** — all 6 Phase 3 frontend stories done (S03-01 through S03-06)
 - 2026-05-03: **Epic 02 ✅ complete** — all 6 Phase 2 backend stories done; 60 tests passing
 - 2026-05-02/03: **Epic 01 ✅ complete** — all 6 Phase 1 notebook stories done

@@ -4,6 +4,17 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Production deployment — Docker Compose ✅**
+
+- `docker-compose.yml`: `api` (FastAPI/uvicorn, healthcheck) + `web` (nginx:1.27-alpine, mounts `frontend/dist/`, proxies `/api/*`)
+- `deploy/Dockerfile`: micromamba/Python 3.11 production image; 4 workers + `--proxy-headers` + `--forwarded-allow-ips=172.16.0.0/12`
+- `deploy/environment-prod.yml`: runtime-only conda env (no Jupyter/notebooks)
+- `deploy/nginx.conf`: SPA fallback, 90s proxy timeout for S2 overlay, immutable asset cache
+- `.env.example`: corrected variable names (`COPERNICUSMARINE_SERVICE_USERNAME`, not `CMEMS_USERNAME`)
+- `.dockerignore`: prevents `__pycache__`, egg-info, notebooks, data from entering build context
+- `ops/deploy.md`: full deployment guide — prerequisites, build steps, update, logs, HTTPS options, troubleshooting
+- Gate 4 (Raze): 4 findings fixed — missing `.dockerignore` (cpython-313 pyc in image), editable install → regular, worker comment wrong (processes not threads), `--forwarded-allow-ips` missing; 2 docs added to troubleshooting table
+
 **Cross-browser E2E — NFR-04 ✅ Verified**
 
 - **NFR-04 ✅** Playwright 1.59 E2E suite: 42 tests (14 scenarios × 3 browsers — Chromium, Firefox, WebKit), all pass; API calls mocked via `page.route()` (no live backend needed); covers app load, Go/No-Go dashboard (verdict, rows, settings modal, refresh), all 5 data panels, error degrades gracefully (NFR-06), sidebar collapse/expand
