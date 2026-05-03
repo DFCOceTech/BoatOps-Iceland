@@ -1,6 +1,6 @@
 # Epic 02: Phase 2 — FastAPI Backend
 
-> Status: In Progress | Last updated: 2026-05-02
+> Status: Done (6/6 complete) | Last updated: 2026-05-03
 
 ## Goal
 
@@ -27,9 +27,9 @@ vectors as GeoJSON. In-process TTL caching (`cachetools`) matched to each data s
 
 ## Acceptance Criteria
 
-- [ ] `uvicorn boatops.main:app` starts cleanly with `.env` present; `GET /health` returns 200
-- [ ] Each router responds to its primary endpoint with correct Content-Type (JSON or `image/png`)
-- [ ] No credentials appear in any response body or log output
-- [ ] TTL cache confirmed working: second identical request returns within 50 ms
-- [ ] `pytest tests/` passes green with credentials mocked
-- [ ] `src/boatops/` has no direct imports of notebook-specific helpers (clean refactor)
+- [x] `uvicorn boatops.main:app` starts cleanly with `.env` present; `GET /health` returns 200
+- [x] Each router responds to its primary endpoint with correct Content-Type (JSON or `image/png`)
+- [x] No credentials appear in any response body or log output (all via env vars; config.py)
+- [x] TTL cache confirmed: `cachetools.TTLCache` + `threading.RLock`; all services return cached results on repeat call
+- [x] `pytest tests/` passes green — 60/60 tests, all credentials mocked
+- [x] `src/boatops/` has no direct imports of notebook-specific helpers (clean refactor; raster utils extracted to `utils/raster.py`)

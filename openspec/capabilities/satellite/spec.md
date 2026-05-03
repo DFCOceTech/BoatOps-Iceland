@@ -74,15 +74,19 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 | Overpass list | list of dicts | platform, start_utc, end_utc, footprint (GeoJSON), cloud_cover_pct, solar_elevation_deg |
 | Best Sentinel-2 scene | dict | scene_id, acquisition_date, cloud_cover_pct, wms_url, tile_grid_ref |
 
-## Implementation Status (2026-05-02)
+## Implementation Status (2026-05-03)
 
-**Status**: Partially Implemented (Phase 1 notebook prototypes complete)
+**Status**: Implemented (Phase 1 + Phase 2 complete)
 
 ### What's Built
 - `notebooks/04_satellite_overpasses.ipynb` — REQ-SAT-001 through REQ-SAT-004; all SCENARIO-SAT-S2-001, SCENARIO-SAT-VIIRS-001, SCENARIO-SAT-FAIL-001 pass
 - `notebooks/05_sentinel2_imagery.ipynb` — REQ-SAT-005 through REQ-SAT-007; SCENARIO-SAT-IMG-001, SCENARIO-SAT-IMG-002 pass
 - CDSE OData overpass query (Sentinel-2/3), CelesTrak TLE + skyfield overpass prediction (6 platforms), Sentinel Hub Process API imagery rendering
 - Partial tile check (spherical Shoelace formula on GeoFootprint; rejects coverage < 50%)
+- `src/boatops/services/cdse_auth.py` — OAuth2 token management; TTLCache 5 min (well inside CDSE expiry)
+- `src/boatops/services/celestrak.py` — TLE fetch (gp.php endpoint) + skyfield `find_events` with AOI ground-track intersection; `if peak_t is not None:` gotcha preserved
+- `src/boatops/services/sentinel_hub.py` — OData scene query (newest cloud-free L2A) + SH Process API true-colour render → PNG bytes
+- `src/boatops/routers/satellite.py` — `GET /api/satellite/overpasses` (JSON array, 6 platforms, 7-day), `GET /api/satellite/s2-overlay` (PNG, X-Scene-Id/X-Acquisition-Time/X-Cloud-Cover headers)
 
 ### Reproducibility
 - **Seed**: Not applicable (live API data)

@@ -78,14 +78,17 @@ If any weather API call fails, the system SHALL return a structured error respon
 | Cloud cover grid | dict | time series of cover (%), bbox |
 | Advisories | GeoJSON FeatureCollection | geometry, type, severity, onset, expires, description |
 
-## Implementation Status (2026-05-02)
+## Implementation Status (2026-05-03)
 
-**Status**: Partially Implemented (Phase 1 notebook prototype complete)
+**Status**: Implemented (Phase 1 + Phase 2 complete)
 
 ### What's Built
 - `notebooks/01_weather.ipynb` — validates Open-Meteo and MeteoAlarm APIs; all SCENARIO-WX-* pass
 - REQ-WX-001 through REQ-WX-007: query patterns established; unit conversion confirmed; graceful failure tested
 - Cloud cover query function reusable by satellite capability (SCENARIO-WX-CLOUD-001 ✓)
+- `src/boatops/services/openmeteo.py` — `get_forecast(lat, lon)` → 168-item hourly JSON (m/s + knots); TTLCache 15 min
+- `src/boatops/services/meteoalarm.py` — `get_advisories(country)` → GeoJSON FeatureCollection (geometry=null — no polygon in Atom feed); TTLCache 5 min
+- `src/boatops/routers/weather.py` — `GET /api/weather/forecast`, `GET /api/weather/advisories`; upstream errors → HTTP 502
 
 ### Reproducibility
 - **Seed**: Not applicable (API data; no randomness)

@@ -2,6 +2,18 @@
 
 Rolling 2-week work log. Remove entries older than 2 weeks.
 
+## 2026-05-03
+
+**Epic 02 ✅ Complete — FastAPI backend, 6/6 stories, 60 tests**
+
+- **S02-01 ✅** FastAPI skeleton: `src/boatops/` package, pydantic-settings config, `cachetools.TTLCache` cache factory, per-capability router stubs → 501, `/health` endpoint
+- **S02-02 ✅** Weather router: `services/openmeteo.py` (168-item hourly JSON, m/s+knots, TTL 15 min), `services/meteoalarm.py` (GeoJSON FC, geometry=null, TTL 5 min); `GET /api/weather/{forecast,advisories}`
+- **S02-03 ✅** Waves router: `services/cmems.py` `get_wave_point` (nearest-wet-cell fallback), `get_wave_overlay` (cmocean.amp PNG, TTL 1 h); `utils/raster.py` shared PNG rendering (thread-safe: FigureCanvasAgg); `GET /api/waves/{forecast,overlay}`
+- **S02-04 ✅** Solar router: `services/solar.py` `get_solar_times` (ISO UTC, null for polar), `get_solar_elevation` (period classification); no cache — deterministic <10 ms; `GET /api/solar/{times,elevation}`
+- **S02-05 ✅** Satellite router: `services/cdse_auth.py` (OAuth2 TTL 5 min), `services/celestrak.py` (TLE + skyfield, 6 platforms, `if peak_t is not None:` gotcha preserved), `services/sentinel_hub.py` (OData scene query + SH Process API PNG); `GET /api/satellite/{overpasses,s2-overlay}`
+- **S02-06 ✅** Map layers router: 6 CMEMS overlay endpoints — bathymetry (deptho, cmocean.deep, 24 h), SST (thermal), salinity (haline), currents (speed quiver), chlorophyll (algae, LogNorm), oxygen (oxy, hypoxia threshold in header); `GET /api/map/{bathymetry,sst,salinity,currents,chlorophyll,oxygen}`
+- All spec-anchor docs reconciled: architecture.md, traceability.md, all 5 capability specs, epic-02.md
+
 ## 2026-05-02
 
 **S01-06 visualization rewrite — cmocean + Leaflet.velocity**

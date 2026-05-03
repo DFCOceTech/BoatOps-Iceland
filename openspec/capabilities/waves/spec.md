@@ -54,15 +54,18 @@ If the CMEMS API is unavailable, the system SHALL return a structured error resp
 |------|--------|------------|
 | Wave grid | dict or xarray Dataset | time, lat, lon, Hs (m), wave_dir (°), model_run_time, last_updated |
 
-## Implementation Status (2026-05-02)
+## Implementation Status (2026-05-03)
 
-**Status**: Partially Implemented (Phase 1 notebook prototype complete)
+**Status**: Implemented (Phase 1 + Phase 2 complete)
 
 ### What's Built
 - `notebooks/02_waves.ipynb` — validates CMEMS Baltic Wave Forecast; all SCENARIO-WAVE-* pass
 - REQ-WAVE-001 through REQ-WAVE-004: query patterns established; VHM0 (Hs) and VMDR confirmed
 - Dataset: `cmems_mod_bal_wav_anfc_PT1H-i` | 1 nmi resolution | hourly | FMI WAM model
-- Auth: `copernicusmarine` Python client v2.4.0 with account from `.env`
+- Auth: `copernicusmarine` Python client with account from `.env`
+- `src/boatops/services/cmems.py` — `get_wave_point(lat, lon)` (nearest-wet-cell fallback implemented), `get_wave_overlay(bbox)` → PNG bytes cmocean.amp; TTLCache 1 h
+- `src/boatops/utils/raster.py` — `to_png_bytes()`, `to_quiver_png_bytes()` shared rendering utilities (thread-safe: uses `matplotlib.figure.Figure` + `FigureCanvasAgg` directly)
+- `src/boatops/routers/waves.py` — `GET /api/waves/forecast`, `GET /api/waves/overlay`; PNG response with `X-Bbox`/`X-Timestamp`/`X-Colorscale` headers
 
 ### Reproducibility
 - **Seed**: Not applicable (model forecast data)

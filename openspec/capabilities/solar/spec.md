@@ -67,14 +67,15 @@ Solar geometry outputs SHALL agree with USNO Solar API values to within ±1 minu
 | Solar events | dict | sunrise, sunset, solar_noon, dawn_civil, dusk_civil, dawn_nautical, dusk_nautical, dawn_astronomical, dusk_astronomical (all UTC ISO 8601) |
 | Timeline | list of dicts | `[{"time": "...", "elevation_deg": float, "azimuth_deg": float}, ...]` |
 
-## Implementation Status (2026-05-02)
+## Implementation Status (2026-05-03)
 
-**Status**: Partially Implemented (Phase 1 notebook prototype complete)
+**Status**: Implemented (Phase 1 + Phase 2 complete)
 
 ### What's Built
 - `notebooks/03_solar.ipynb` — validates suncalc; all SCENARIO-SOL-* pass except ACCURACY-001 (placeholder values)
 - REQ-SOL-001 through REQ-SOL-006: all implemented; polar summer edge case handled
-- `get_solar_events()`, `get_solar_timeline()`, `solar_elevation_at_overpass()` ready for extraction to `src/boatops/services/solar.py`
+- `src/boatops/services/solar.py` — `get_solar_times(lat, lon, date)` (ISO UTC strings, null for polar events), `get_solar_elevation(lat, lon, dt)` (elevation°, azimuth°, period classification); no caching — deterministic, <10 ms
+- `src/boatops/routers/solar.py` — `GET /api/solar/times`, `GET /api/solar/elevation`
 
 ### Reproducibility
 - **Seed**: Not applicable (deterministic)

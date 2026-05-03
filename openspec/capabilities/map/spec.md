@@ -155,17 +155,16 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 - Tile URLs served to frontend map library (MapLibre GL JS)
 - AOI geometry (GeoJSON polygon) stored in session state
 
-## Implementation Status (2026-05-02)
+## Implementation Status (2026-05-03)
 
-**Status**: Partially Implemented (Phase 1 notebook complete)
+**Status**: Implemented (Phase 1 + Phase 2 complete)
 
 ### What's Built
-- `notebooks/06_map_layers.ipynb` — REQ-MAP-002 through REQ-MAP-008; all SCENARIO-MAP-* pass
-- OSM + OpenSeaMap tile validation (HTTP 200, image content confirmed)
-- Synthetic GeoTIFF ImageOverlay via PNG data URI (rasterio workflow pattern)
-- GEBCO WMS: `GEBCO_LATEST` at `https://wms.gebco.net/mapserv` confirmed
-- EMODnet WMS: `eusm_helcom_group` (HELCOM Baltic) confirmed; `eusm2022` no longer exists
-- Combined ipyleaflet map with all 5 overlays + LayersControl
+- `notebooks/06_map_layers.ipynb` — all 14 SCENARIO-MAP-* assertions PASS; cmocean colormaps throughout; quiver direction overlays for waves + currents; Leaflet.velocity deferred to Phase 3
+- OSM + OpenSeaMap tile validation; GEBCO WMS `GEBCO_LATEST`; EMODnet `eusm_helcom_group`
+- Marine bathymetry: CMEMS `deptho` (NaN=land → transparent) instead of GEBCO WMS (fully opaque)
+- `src/boatops/services/cmems.py` — `get_bathymetry_overlay` (cmocean.deep, 24 h cache), `get_sst_overlay` (thermal), `get_salinity_overlay` (haline), `get_currents_overlay` (speed quiver), `get_chlorophyll_overlay` (algae, LogNorm), `get_oxygen_overlay` (oxy, hypoxia threshold 63 mmol/m³ in header); all 1 h cache except bathymetry
+- `src/boatops/routers/map_layers.py` — `GET /api/map/{bathymetry,sst,salinity,currents,chlorophyll,oxygen}`; PNG binary + `X-Bbox`/`X-Timestamp`/`X-Colorscale` headers
 
 ### Reproducibility
 - **Seed**: Not applicable (tile/WMS live services)

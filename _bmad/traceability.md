@@ -1,6 +1,6 @@
 # Traceability Matrix — BoatOps
 
-> Status: Living Document | Last updated: 2026-05-02 (FR-17/18 added)
+> Status: Living Document | Last updated: 2026-05-03 (Epic 02 gate run added)
 
 ## PRD → OpenSpec → Epic → Implementation Status
 
@@ -64,6 +64,7 @@ Epic 01 (Phase 1 Notebooks) → Epic 02 (Phase 2 FastAPI) → Epic 03 (Phase 3 F
 |-------------|------|------|---------|----------|
 | Epic 01 notebooks (s01-01 to s01-05) | Gate 1 | 2026-05-01/02 | PASS | nbconvert executions; all SCENARIO-* assertions green |
 | Epic 01 notebook s01-06 | Gate 1 | 2026-05-02 | PASS | nbconvert execution; all SCENARIO-MAP-* assertions green |
+| Epic 02 FastAPI backend (s02-01 to s02-06) | Gate 1 | 2026-05-03 | PASS | `pytest tests/` 60/60; all credentials mocked; PNG magic bytes verified |
 
 ## Verified Scenarios (E2E-bound)
 

@@ -1,7 +1,7 @@
 # Architecture — BoatOps
 
-> Version: 1.0 | Status: Living Document | Last updated: 2026-05-01
-> **Last Reconciled: 2026-05-01** — Review required if >30 days stale
+> Version: 1.1 | Status: Living Document | Last updated: 2026-05-03
+> **Last Reconciled: 2026-05-03** — Review required if >30 days stale
 
 ## System Context
 
@@ -25,20 +25,20 @@
 
 ## Development Phases
 
-### Phase 1 — Jupyter Notebook Prototypes (current)
+### Phase 1 — Jupyter Notebook Prototypes ✅ Complete
 
 One notebook per capability under `notebooks/`. Goal: validate each data source, nail down query patterns, understand data shapes and edge cases.
 
 | Notebook | Capability | Status |
 |----------|-----------|--------|
-| `notebooks/01_weather.ipynb` | Weather (Open-Meteo) | Not started |
-| `notebooks/02_waves.ipynb` | Waves (CMEMS) | Not started |
-| `notebooks/03_solar.ipynb` | Solar geometry (suncalc) | Not started |
-| `notebooks/04_satellite_overpasses.ipynb` | SAT overpasses (CDSE, USGS, CelesTrak) | Not started |
-| `notebooks/05_sentinel2_imagery.ipynb` | Sentinel-2 imagery (CDSE STAC/WMS) | Not started |
-| `notebooks/06_map_layers.ipynb` | Map base layers (OSM, OpenSeaMap, WMS/WMTS) | Not started |
+| `notebooks/01_weather.ipynb` | Weather (Open-Meteo) | ✅ Done |
+| `notebooks/02_waves.ipynb` | Waves (CMEMS) | ✅ Done |
+| `notebooks/03_solar.ipynb` | Solar geometry (suncalc) | ✅ Done |
+| `notebooks/04_satellite_overpasses.ipynb` | SAT overpasses (CDSE, USGS, CelesTrak) | ✅ Done |
+| `notebooks/05_sentinel2_imagery.ipynb` | Sentinel-2 imagery (CDSE STAC/WMS) | ✅ Done |
+| `notebooks/06_map_layers.ipynb` | Map base layers (OSM, OpenSeaMap, WMS/WMTS, CMEMS overlays) | ✅ Done |
 
-### Phase 2 — FastAPI Backend
+### Phase 2 — FastAPI Backend ✅ Complete (current)
 
 Notebook logic refactored into `src/boatops/` modules. FastAPI app with per-capability routers. All credentials loaded server-side from `.env`.
 
