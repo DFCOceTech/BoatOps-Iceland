@@ -1,13 +1,23 @@
-from fastapi import APIRouter
+from datetime import date
+
+from fastapi import APIRouter, HTTPException
+
+from boatops.services import solar
 
 router = APIRouter(prefix="/api/solar", tags=["solar"])
 
 
 @router.get("/times")
-async def get_times(lat: float, lon: float, date: str | None = None):
-    raise NotImplementedError  # S02-04
+def get_times(lat: float, lon: float, date: date | None = None):
+    try:
+        return solar.get_solar_times(lat, lon, date)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/elevation")
-async def get_elevation(lat: float, lon: float):
-    raise NotImplementedError  # S02-04
+def get_elevation(lat: float, lon: float):
+    try:
+        return solar.get_solar_elevation(lat, lon)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
