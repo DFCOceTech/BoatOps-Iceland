@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date as _Date
 
 from fastapi import APIRouter, HTTPException
 
@@ -8,7 +8,7 @@ router = APIRouter(prefix="/api/solar", tags=["solar"])
 
 
 @router.get("/times")
-def get_times(lat: float, lon: float, date: date | None = None):
+def get_times(lat: float, lon: float, date: _Date | None = None):
     try:
         return solar.get_solar_times(lat, lon, date)
     except Exception as exc:
