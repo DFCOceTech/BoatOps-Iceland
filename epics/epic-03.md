@@ -1,6 +1,6 @@
 # Epic 03: Phase 3 — React + MapLibre GL JS Frontend
 
-> Status: In Progress | Last updated: 2026-05-03
+> Status: ✅ Complete | Last updated: 2026-05-03
 
 ## Goal
 
@@ -24,17 +24,17 @@ All data fetching is done client-side against the FastAPI backend at
 | S03-03 | Oceanographic overlays — all `/api/map/*` PNG layers with legend and timestamp | ✅ Done | FR-17–FR-23 |
 | S03-04 | Weather + waves panels — forecast charts, wind/wave overlays | ✅ Done | FR-06–FR-09, FR-12, FR-13 |
 | S03-05 | Solar + satellite panels — solar times, overpass timeline, S2 overlay | ✅ Done | FR-11, FR-14, FR-15 |
-| S03-06 | Go/No-Go dashboard — per-capability status, overall recommendation | Backlog | FR-01 (partial) |
+| S03-06 | Go/No-Go dashboard — per-capability status, overall recommendation | ✅ Done | FR-01 (partial) |
 
 ## Acceptance Criteria
 
-- [ ] `npm run dev` starts cleanly; map loads in browser at localhost:5173
-- [ ] All layer toggles work without page reload
-- [ ] Each active layer displays a last-updated timestamp (NFR-05)
-- [ ] Layer errors show error state without blocking other layers (NFR-06)
-- [ ] No API credentials exposed in browser DevTools network tab (NFR-03)
-- [ ] Renders correctly in Chrome, Firefox, and Safari (NFR-04)
-- [ ] Go/No-Go recommendation updates when forecast data changes
+- [x] `npm run dev` starts cleanly; map loads in browser at localhost:5173
+- [x] All layer toggles work without page reload
+- [x] Each active layer displays a last-updated timestamp (NFR-05)
+- [x] Layer errors show error state without blocking other layers (NFR-06)
+- [x] No API credentials exposed in browser DevTools network tab (NFR-03)
+- [ ] Renders correctly in Chrome, Firefox, and Safari (NFR-04) — E2E cross-browser test pending
+- [x] Go/No-Go recommendation updates when forecast data changes
 
 ## Tech Stack Decisions
 

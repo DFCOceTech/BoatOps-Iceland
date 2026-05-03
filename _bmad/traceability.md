@@ -1,12 +1,12 @@
 # Traceability Matrix — BoatOps
 
-> Status: Living Document | Last updated: 2026-05-03 (S03-05 solar + satellite panels complete)
+> Status: Living Document | Last updated: 2026-05-03 (S03-06 Go/No-Go dashboard complete; Epic 03 complete)
 
 ## PRD → OpenSpec → Epic → Implementation Status
 
 | PRD Req | OpenSpec Capability | Epic | Impl Status | Notes |
 |---------|---------------------|------|-------------|-------|
-| FR-01 | `map` | Epic 01 | Partial | Notebook done; AOI draw + layer toggle UI deferred to Phase 3 |
+| FR-01 | `map` | Epic 03 | Partial | Go/No-Go dashboard (S03-06) implements planning decision view; AOI draw tool + time picker deferred |
 | FR-02 | `map` | Epic 01 | Partial | Notebook done |
 | FR-03 | `map` | Epic 01 | Partial | Notebook done |
 | FR-04 | `map` | Epic 01 | Partial | Notebook done (synthetic raster); real upload deferred to Phase 2/3 |

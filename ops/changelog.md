@@ -4,6 +4,13 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Epic 03 ✅ Complete — React + MapLibre GL JS frontend, 6/6 stories**
+
+**Epic 03 — S03-06 ✅ Go/No-Go dashboard**
+
+- **S03-06 ✅** `GoNoGoContext` — push model context: panels push windKt/gustKt/hsM/cloudPct/solarElevDeg via `update()` when their `useFetch` data arrives; `triggerRefresh()` + `refreshSignal` counter allows dashboard ↻ button to trigger all panel refetches; `GoNoDashboard` — overall verdict badge (Go/Caution/No-Go/Awaiting Data), per-capability rows (icon + label + colored value + status dot with grey=pending), ↻ refresh button, ⚙ threshold settings modal persisted to `localStorage`, FR-16 AI placeholder; WeatherPanel/WavePanel/SolarPanel: each pushes to context and subscribes to `refreshSignal`
+- Gate 4 (Raze): 2 findings fixed — `defaultValue` (uncontrolled) in modal broke Reset Defaults visually (fixed: `value=` controlled inputs); no refresh button in dashboard panel (fixed: added ↻ + `triggerRefresh` + `refreshSignal` subscription in all panels)
+
 **Epic 03 — S03-05 ✅ Solar + satellite panels**
 
 - **S03-05 ✅** `SolarPanel` — solar times table (sunrise/noon/sunset + civil/nautical/astronomical dawn+dusk in Berlin/CET via `Intl.DateTimeFormat`), SVG semicircle elevation gauge with coloured arc fill and tick marks, period badge (day/civil_twilight/nautical_twilight/astronomical_twilight/night), 60-second auto-refresh for elevation via `setInterval` + ref pattern; `SatellitePanel` — overpass table grouped by platform (alphabetical section headers, platform-colored) with AOS in Berlin time, satellite max elevation column (≥20° in green), daytime pass row highlight (today's sunrise–sunset proxy); S2 overlay toggle with full lifecycle management — `S2OverlayResult` type in client.ts reads `X-Scene-Id`/`X-Acquisition-Time`/`X-Cloud-Cover` headers, acquisition date + cloud cover badge shown, `AbortController.signal` threaded all the way to `fetch()` for cancellation of 10–30 s requests, `mapRef` pattern avoids stale closure after async window, `mountedRef` guard in `doAdd` callback
