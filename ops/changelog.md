@@ -4,6 +4,11 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Epic 03 — S03-02 ✅ Base map + layer toggle panel**
+
+- **S03-02 ✅** `MapContext` React context shares map instance; `layers.ts` typed `RasterLayerDef` config; `useLayerVisibility` hook adds/removes sources+layers on map and syncs checkbox state; `LayerPanel.tsx` checkbox list in sidebar (OpenSeaMap, GEBCO WMS, EMODnet WMS); `CoordDisplay.tsx` cursor lat/lon overlay (hemisphere-correct °N/S/E/W); 0 TS errors
+- Gate 4 (Raze): 2 issues fixed — `layerDefs` added to `useEffect` dep array (stale closure risk); coordinate display shows correct N/S/E/W hemispheres
+
 **Epic 03 started — React + MapLibre GL JS frontend**
 
 - **S03-01 ✅** Vite 8 + React 18 + TypeScript scaffold; `maplibre-gl` + `recharts` installed; Vite dev proxy `/api/*` → `localhost:8000`; `src/api/client.ts` typed fetch wrappers for all 14 FastAPI endpoints (JSON + PNG/blob); `MapView.tsx` MapLibre GL JS map centred on Baltic (OSM tiles, nav + scale controls); `Sidebar.tsx` collapsible dark panel; `npm run build` passes, 0 TS errors
