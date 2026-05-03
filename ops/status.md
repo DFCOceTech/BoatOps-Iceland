@@ -45,7 +45,7 @@ All 6 stories done:
 
 ## Known Issues / Deferred
 
-- **Cross-browser E2E (NFR-04)**: Chrome/Firefox/Safari testing not yet run formally. `npm run build` passes (0 TS errors).
+- **Live API E2E**: Tests mock all API calls; actual CMEMS/CDSE data path not verified in E2E. Requires live credentials + running backend.
 - **MeteoAlarm polygon overlays**: Atom feed has no geometry; DWD WFS not integrated (deferred).
 - **USNO solar accuracy (SCENARIO-SOL-ACCURACY-001)**: Placeholder values; formal ±1 min validation pending.
 - **Midpass solar elevation**: `Overpass` schema has no `midpass_solar_elevation_deg`; frontend uses daytime proxy. Backend schema extension deferred.

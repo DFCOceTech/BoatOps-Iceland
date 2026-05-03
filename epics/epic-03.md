@@ -33,7 +33,7 @@ All data fetching is done client-side against the FastAPI backend at
 - [x] Each active layer displays a last-updated timestamp (NFR-05)
 - [x] Layer errors show error state without blocking other layers (NFR-06)
 - [x] No API credentials exposed in browser DevTools network tab (NFR-03)
-- [ ] Renders correctly in Chrome, Firefox, and Safari (NFR-04) — E2E cross-browser test pending
+- [x] Renders correctly in Chrome, Firefox, and Safari (NFR-04) — 42/42 Playwright tests pass across Chromium, Firefox, WebKit (2026-05-03)
 - [x] Go/No-Go recommendation updates when forecast data changes
 
 ## Tech Stack Decisions
