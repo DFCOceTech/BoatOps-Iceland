@@ -21,7 +21,7 @@ All data fetching is done client-side against the FastAPI backend at
 |----|-------|--------|----------|
 | S03-01 | Project scaffold — Vite + React + TS + MapLibre, API client, layout shell | ✅ Done | — |
 | S03-02 | Base map — OSM tiles, OpenSeaMap overlay, layer toggle panel, coordinate display | ✅ Done | FR-01, FR-02, FR-03 |
-| S03-03 | Oceanographic overlays — all `/api/map/*` PNG layers with legend and timestamp | Backlog | FR-17–FR-23 |
+| S03-03 | Oceanographic overlays — all `/api/map/*` PNG layers with legend and timestamp | ✅ Done | FR-17–FR-23 |
 | S03-04 | Weather + waves panels — forecast charts, wind/wave overlays | Backlog | FR-06–FR-09, FR-12, FR-13 |
 | S03-05 | Solar + satellite panels — solar times, overpass timeline, S2 overlay | Backlog | FR-11, FR-14, FR-15 |
 | S03-06 | Go/No-Go dashboard — per-capability status, overall recommendation | Backlog | FR-01 (partial) |

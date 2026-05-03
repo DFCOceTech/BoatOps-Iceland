@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import LayerPanel from './LayerPanel'
+import OceanLayerPanel from './OceanLayerPanel'
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -55,6 +56,7 @@ export default function Sidebar() {
           BoatOps
         </h1>
         <LayerPanel />
+        <OceanLayerPanel />
       </div>
     </aside>
   )

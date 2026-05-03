@@ -4,6 +4,11 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Epic 03 — S03-03 ✅ Oceanographic overlay layers**
+
+- **S03-03 ✅** `oceanLayers.ts` typed `ApiLayerDef` config with CSS gradient per cmocean colormap; `useApiLayers` hook — lazy fetch on first toggle, AbortController cancel on unmount/refresh, blob URL lifecycle, MapLibre `ImageSource` + `RasterLayer` per layer; `OceanLayerPanel.tsx` — checkbox toggle, loading spinner, error state with retry, colorscale legend bar, timestamp badge, opacity slider; `ColorscaleLegend.tsx` — gradient bar, vmin/vmax/unit labels; 6 layers: bathymetry, SST, salinity, currents, chl-a, bottom O₂
+- Gate 4 (Raze): 3 bugs fixed — stale closure (opacity read at add-time now uses constant default); AbortController + mounted ref prevent state updates after unmount; checkbox `stopPropagation` removed (was blocking `onChange` when clicking input directly)
+
 **Epic 03 — S03-02 ✅ Base map + layer toggle panel**
 
 - **S03-02 ✅** `MapContext` React context shares map instance; `layers.ts` typed `RasterLayerDef` config; `useLayerVisibility` hook adds/removes sources+layers on map and syncs checkbox state; `LayerPanel.tsx` checkbox list in sidebar (OpenSeaMap, GEBCO WMS, EMODnet WMS); `CoordDisplay.tsx` cursor lat/lon overlay (hemisphere-correct °N/S/E/W); 0 TS errors
