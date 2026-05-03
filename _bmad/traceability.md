@@ -1,6 +1,6 @@
 # Traceability Matrix — BoatOps
 
-> Status: Living Document | Last updated: 2026-05-03 (Epic 02 gate run added)
+> Status: Living Document | Last updated: 2026-05-03 (S03-05 solar + satellite panels complete)
 
 ## PRD → OpenSpec → Epic → Implementation Status
 
@@ -23,11 +23,11 @@
 | FR-08 | `weather` | Epic 01 | Partial | Notebook done |
 | FR-09 | `weather` | Epic 01 | Partial | Notebook done; cloud cover reused by satellite capability |
 | FR-10 | `weather` | Epic 01 | Partial | MeteoAlarm text-only; no polygon geometry in Atom feed |
-| FR-11 | `solar` | Epic 01 | Partial | Notebook done; USNO accuracy validation pending |
+| FR-11 | `solar` | Epic 03 | Done | `SolarPanel.tsx` — times table (all 3 twilight tiers, Berlin CET/CEST), elevation arc gauge, period badge, 60 s auto-refresh |
 | FR-12 | `waves` | Epic 01 | Partial | Notebook done; Hs rendered as map overlay (s01-06); nearest-wet-cell fallback needed in Phase 2 |
 | FR-13 | `waves` | Epic 01 | Partial | Notebook done |
-| FR-14 | `satellite` | Epic 01 | Partial | Notebook done; TLE prediction for 6 platforms |
-| FR-15 | `satellite` | Epic 01 | Partial | Notebook done; partial tile filter, Process API rendering |
+| FR-14 | `satellite` | Epic 03 | Done | `SatellitePanel.tsx` — overpass table grouped by platform, AOS in Berlin time, satellite elev + duration; daytime pass highlight |
+| FR-15 | `satellite` | Epic 03 | Done | S2 overlay toggle: MapLibre ImageSource, acquisition date + cloud cover badge; AbortController cancel on 10–30 s fetch |
 | FR-16 | `ai-synthesis` | Epic 02 | Not Started | Deferred — nice-to-have |
 
 **Impl Status values**: Done | Partial | In Progress | Not Started | Deferred | Untested

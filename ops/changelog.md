@@ -4,6 +4,11 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Epic 03 — S03-05 ✅ Solar + satellite panels**
+
+- **S03-05 ✅** `SolarPanel` — solar times table (sunrise/noon/sunset + civil/nautical/astronomical dawn+dusk in Berlin/CET via `Intl.DateTimeFormat`), SVG semicircle elevation gauge with coloured arc fill and tick marks, period badge (day/civil_twilight/nautical_twilight/astronomical_twilight/night), 60-second auto-refresh for elevation via `setInterval` + ref pattern; `SatellitePanel` — overpass table grouped by platform (alphabetical section headers, platform-colored) with AOS in Berlin time, satellite max elevation column (≥20° in green), daytime pass row highlight (today's sunrise–sunset proxy); S2 overlay toggle with full lifecycle management — `S2OverlayResult` type in client.ts reads `X-Scene-Id`/`X-Acquisition-Time`/`X-Cloud-Cover` headers, acquisition date + cloud cover badge shown, `AbortController.signal` threaded all the way to `fetch()` for cancellation of 10–30 s requests, `mapRef` pattern avoids stale closure after async window, `mountedRef` guard in `doAdd` callback
+- Gate 4 (Raze): 6 findings fixed — AbortController signal not passed to fetch(); stale closed-over map in doAdd() (now uses mapRef.current); overpass table had no platform grouping; astronomical dawn/dusk row missing from solar times table; satellite elevation column incorrectly implied solar elevation (legend clarified); `map.once('load', doAdd)` post-unmount safety via mountedRef guard
+
 **Epic 03 — S03-04 ✅ Weather + waves panels**
 
 - **S03-04 ✅** `useFetch` generic hook with mounted-ref guard and fetcherRef (stable closure, no re-fetch storm); `WeatherPanel` — current conditions card (wind kt + arrow, gust, temp, cloud, precip), 7-day Recharts ComposedChart (wind line + gust fill + cloud area, 15/25 kt reference lines, every-6h thinning), advisory count badge; `WavePanel` — current Hs with Go/Caution/No-Go colour coding, wave direction + bearing label, timestamp UTC suffix, wave overlay checkbox toggle via `useApiLayers`

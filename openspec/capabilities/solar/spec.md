@@ -69,13 +69,14 @@ Solar geometry outputs SHALL agree with USNO Solar API values to within ±1 minu
 
 ## Implementation Status (2026-05-03)
 
-**Status**: Implemented (Phase 1 + Phase 2 complete)
+**Status**: Implemented (Phase 1 + Phase 2 + Phase 3 complete)
 
 ### What's Built
 - `notebooks/03_solar.ipynb` — validates suncalc; all SCENARIO-SOL-* pass except ACCURACY-001 (placeholder values)
 - REQ-SOL-001 through REQ-SOL-006: all implemented; polar summer edge case handled
 - `src/boatops/services/solar.py` — `get_solar_times(lat, lon, date)` (ISO UTC strings, null for polar events), `get_solar_elevation(lat, lon, dt)` (elevation°, azimuth°, period classification); no caching — deterministic, <10 ms
 - `src/boatops/routers/solar.py` — `GET /api/solar/times`, `GET /api/solar/elevation`
+- `frontend/src/components/SolarPanel.tsx` — solar times table (all 3 twilight tiers, Berlin CET/CEST via `Intl.DateTimeFormat`); SVG semicircle elevation gauge with coloured arc fill; period badge; 60-second auto-refresh for elevation
 
 ### Reproducibility
 - **Seed**: Not applicable (deterministic)
@@ -88,5 +89,4 @@ Solar geometry outputs SHALL agree with USNO Solar API values to within ±1 minu
 - suncalc returns tz-naive `pd.NaT` (not Python `None`) for missing events — requires `pd.isna(v)` check and `tz_localize("UTC")` before arithmetic.
 
 ### Deferred
-- Timeline visualization rendering (Phase 3 frontend)
 - SCENARIO-SOL-ACCURACY-001 USNO formal validation (run manually once)

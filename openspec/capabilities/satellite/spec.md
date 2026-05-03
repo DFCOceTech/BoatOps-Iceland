@@ -76,7 +76,7 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 
 ## Implementation Status (2026-05-03)
 
-**Status**: Implemented (Phase 1 + Phase 2 complete)
+**Status**: Implemented (Phase 1 + Phase 2 + Phase 3 complete)
 
 ### What's Built
 - `notebooks/04_satellite_overpasses.ipynb` — REQ-SAT-001 through REQ-SAT-004; all SCENARIO-SAT-S2-001, SCENARIO-SAT-VIIRS-001, SCENARIO-SAT-FAIL-001 pass
@@ -87,6 +87,8 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 - `src/boatops/services/celestrak.py` — TLE fetch (gp.php endpoint) + skyfield `find_events` with AOI ground-track intersection; `if peak_t is not None:` gotcha preserved
 - `src/boatops/services/sentinel_hub.py` — OData scene query (newest cloud-free L2A) + SH Process API true-colour render → PNG bytes
 - `src/boatops/routers/satellite.py` — `GET /api/satellite/overpasses` (JSON array, 6 platforms, 7-day), `GET /api/satellite/s2-overlay` (PNG, X-Scene-Id/X-Acquisition-Time/X-Cloud-Cover headers)
+- `frontend/src/components/SatellitePanel.tsx` — overpass table grouped by platform (alphabetical section headers, AOS in Berlin time, satellite max elevation, duration); S2 overlay toggle with manual MapLibre ImageSource lifecycle; acquisition date + cloud cover badge
+- `frontend/src/api/client.ts` — `S2OverlayResult` type; `fetchS2Png()` reads satellite-specific headers; `getS2Overlay()` accepts `AbortSignal` for cancellation of 10–30 s fetch
 
 ### Reproducibility
 - **Seed**: Not applicable (live API data)
@@ -101,6 +103,9 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 - REQ-SAT-005 tile coverage filter added: pool of 20 candidates fetched; scenes with footprint area < 50% of full 110×110 km tile are rejected (adapted from Sent2_GreenMac).
 
 ### Deferred
-- Sentinel-2 WMS/WMTS tile display (Phase 3 frontend; Sentinel Hub Process API used as interim)
-- VIIRS and Landsat ground track rendering on map (Phase 3 frontend)
+- VIIRS and Landsat ground track rendering on map (Phase 3 nice-to-have)
 - Sentinel-3 overpass TLE prediction (CDSE OData historical only in notebook)
+- Per-pass midpass solar elevation: `Overpass` schema has no `midpass_solar_elevation_deg` field; frontend uses daytime-pass proxy (AOS between sunrise/sunset) as an approximation
+
+### Phase 3 Deviations
+- "Optimal passes" AC requires solar elevation at midpass > 20°. Backend `Overpass` type does not include midpass solar elevation. Implemented as: satellite max elevation ≥ 20° shown in green (different quantity); today's passes with AOS in sunrise–sunset window highlighted (daylight proxy). Backend schema extension deferred to S03-06 or a future backend story.
