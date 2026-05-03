@@ -4,6 +4,12 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Cross-browser E2E — NFR-04 ✅ Verified**
+
+- **NFR-04 ✅** Playwright 1.59 E2E suite: 42 tests (14 scenarios × 3 browsers — Chromium, Firefox, WebKit), all pass; API calls mocked via `page.route()` (no live backend needed); covers app load, Go/No-Go dashboard (verdict, rows, settings modal, refresh), all 5 data panels, error degrades gracefully (NFR-06), sidebar collapse/expand
+- 2 bugs found+fixed: `<title>frontend</title>` → `<title>BoatOps</title>`; sidebar toggle button clipped by `overflow:hidden` on `position:relative` containing block — fixed with `position:fixed` (viewport-anchored)
+- Gate 4 (Raze — inline): changelog and traceability NFR rows missing → fixed; `right:380` hardcoded twice in same file → acceptable within scope
+
 **Epic 03 ✅ Complete — React + MapLibre GL JS frontend, 6/6 stories**
 
 **Epic 03 — S03-06 ✅ Go/No-Go dashboard**

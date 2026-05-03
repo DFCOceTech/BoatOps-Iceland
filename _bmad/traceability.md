@@ -39,9 +39,9 @@
 | NFR-01 | Multi-user load test | Untested | Phase 2 (FastAPI) |
 | NFR-02 | N/A — always-on internet assumed | N/A | |
 | NFR-03 | Security review of .env handling | Untested | Phase 2 |
-| NFR-04 | Browser cross-test | Untested | Phase 3 (frontend) |
+| NFR-04 | Playwright 1.59 cross-browser E2E | ✅ Verified | 42/42 tests pass on Chromium, Firefox, WebKit (2026-05-03); `frontend/tests/smoke.spec.ts` |
 | NFR-05 | Check `last_updated` field in each layer response | Partial | Open-Meteo: generationtime_ms ✓; CMEMS: time.values[-1] fallback; CDSE: ContentDate ✓ |
-| NFR-06 | Simulated API failure per data source | Partial | SCENARIO-WX-FAIL-001, SCENARIO-WAVE-FAIL-001, SCENARIO-SAT-FAIL-001 all pass in notebooks |
+| NFR-06 | Simulated API failure per data source | ✅ Verified | E2E-008a: weather 500 → panel error, other panels unaffected; E2E-008b: verdict stays AWAITING DATA |
 
 ## Epic Dependency Graph
 
