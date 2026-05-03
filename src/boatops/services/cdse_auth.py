@@ -15,6 +15,9 @@ _TOKEN_URL = (
 )
 
 
+# Phase 2 is single-tenant: one email/password pair from server .env.
+# Key on email only — password not needed in key because one email = one account.
+# Phase 3: if multi-tenant auth is added, include a tenant_id in the key.
 @cachetools.cached(cache=_cache, lock=_lock,
                    key=lambda email, password: cachetools.keys.hashkey(email))
 def get_token(email: str, password: str) -> str:

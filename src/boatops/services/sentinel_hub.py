@@ -79,6 +79,10 @@ def find_best_scene(token: str, bbox: tuple,
     }
 
 
+# Phase 2 is single-tenant: all requests use the same server-side CDSE credentials,
+# so token is always the same and must NOT be part of the cache key (it would defeat
+# the 1-hour cache every time the 5-minute token is refreshed).
+# Phase 3: if per-user auth is added, include a user_id in the key.
 @cachetools.cached(
     cache=_cache, lock=_lock,
     key=lambda token, bbox, cloud_max=20.0, days_back=90: cachetools.keys.hashkey(bbox, cloud_max, days_back),
