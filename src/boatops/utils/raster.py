@@ -8,7 +8,10 @@ import io
 import warnings
 
 import cmocean  # noqa: F401 — imported so callers can pass cmocean colormaps
+import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 import numpy as np
 from PIL import Image
 
@@ -64,7 +67,9 @@ def to_quiver_png_bytes(lons: np.ndarray, lats: np.ndarray,
     sV = V[::stride, ::stride]
     sSpd = np.sqrt(sU ** 2 + sV ** 2)
     LG, AG = np.meshgrid(sl, ss)
-    fig = plt.figure(figsize=(8, 8 * (lats.max() - lats.min()) / (lons.max() - lons.min())))
+    # Use Figure directly (not plt.figure) so this works on any thread/backend
+    fig = Figure(figsize=(8, 8 * (lats.max() - lats.min()) / (lons.max() - lons.min())))
+    FigureCanvasAgg(fig)
     fig.patch.set_alpha(0)
     ax = fig.add_axes([0, 0, 1, 1])
     ax.patch.set_alpha(0)
@@ -75,7 +80,6 @@ def to_quiver_png_bytes(lons: np.ndarray, lats: np.ndarray,
     ax.axis("off")
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=100, transparent=True, bbox_inches=None)
-    plt.close(fig)
     buf.seek(0)
     return buf.read()
 

@@ -18,12 +18,12 @@ vectors as GeoJSON. In-process TTL caching (`cachetools`) matched to each data s
 
 | ID | Story | Status | OpenSpec Refs |
 |----|-------|--------|---------------|
-| S02-01 | FastAPI skeleton — app, config, cache, router stubs, health endpoint | In Progress | — |
+| S02-01 | FastAPI skeleton — app, config, cache, router stubs, health endpoint | ✅ Done | — |
 | S02-02 | Weather router — Open-Meteo forecast + MeteoAlarm advisories | ✅ Done | REQ-WX-001–007 |
 | S02-03 | Waves router — CMEMS Hs forecast + overlay PNG | ✅ Done | REQ-WAVE-001–004 |
 | S02-04 | Solar router — suncalc times + current elevation | ✅ Done | REQ-SOL-001–006 |
 | S02-05 | Satellite router — CDSE overpasses + Sentinel-2 overlay PNG | ✅ Done | REQ-SAT-001–007 |
-| S02-06 | Map layers router — bathymetry, SST, salinity, currents, chl, O₂ overlay PNGs | Backlog | REQ-MAP-001–016 |
+| S02-06 | Map layers router — bathymetry, SST, salinity, currents, chl, O₂ overlay PNGs | ✅ Done | REQ-MAP-001–016 |
 
 ## Acceptance Criteria
 
