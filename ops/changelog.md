@@ -4,6 +4,11 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Epic 03 — S03-04 ✅ Weather + waves panels**
+
+- **S03-04 ✅** `useFetch` generic hook with mounted-ref guard and fetcherRef (stable closure, no re-fetch storm); `WeatherPanel` — current conditions card (wind kt + arrow, gust, temp, cloud, precip), 7-day Recharts ComposedChart (wind line + gust fill + cloud area, 15/25 kt reference lines, every-6h thinning), advisory count badge; `WavePanel` — current Hs with Go/Caution/No-Go colour coding, wave direction + bearing label, timestamp UTC suffix, wave overlay checkbox toggle via `useApiLayers`
+- Gate 4 (Raze): advisory pluralization bug fixed ("advisories" not "advisoriesies"); wave timestamp now shows "UTC" suffix
+
 **Epic 03 — S03-03 ✅ Oceanographic overlay layers**
 
 - **S03-03 ✅** `oceanLayers.ts` typed `ApiLayerDef` config with CSS gradient per cmocean colormap; `useApiLayers` hook — lazy fetch on first toggle, AbortController cancel on unmount/refresh, blob URL lifecycle, MapLibre `ImageSource` + `RasterLayer` per layer; `OceanLayerPanel.tsx` — checkbox toggle, loading spinner, error state with retry, colorscale legend bar, timestamp badge, opacity slider; `ColorscaleLegend.tsx` — gradient bar, vmin/vmax/unit labels; 6 layers: bathymetry, SST, salinity, currents, chl-a, bottom O₂
