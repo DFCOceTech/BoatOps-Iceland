@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import { useMapContext } from '../context/MapContext'
 import { useApiLayers } from '../hooks/useApiLayers'
 import { useFetch } from '../hooks/useFetch'
 import { getWaveForecast, getWaveOverlay } from '../api/client'
 import type { ApiLayerDef } from '../config/oceanLayers'
+import { useGoNoGo } from '../context/GoNoGoContext'
 
 const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
 const CENTER = { lat: 54.18, lon: 12.08 }
@@ -53,8 +55,19 @@ export default function WavePanel() {
   const { map } = useMapContext()
   const { layers, toggle } = useApiLayers([WAVE_OVERLAY_DEF], map)
   const waveForecast = useFetch(() => getWaveForecast(CENTER.lat, CENTER.lon))
+  const { update, refreshSignal } = useGoNoGo()
 
   const w = waveForecast.data
+  useEffect(() => {
+    if (w) update({ hsM: w.hs_m })
+  }, [w, update])
+
+  // Refresh when dashboard "↻" is clicked
+  useEffect(() => {
+    if (refreshSignal === 0) return
+    waveForecast.refetch()
+  }, [refreshSignal]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const status = w ? hsStatus(w.hs_m) : null
   const overlayState = layers[WAVE_OVERLAY_DEF.id]
 

@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, ReferenceLine,
 } from 'recharts'
 import { useFetch } from '../hooks/useFetch'
 import { getWeatherForecast, getWeatherAdvisories } from '../api/client'
+import { useGoNoGo } from '../context/GoNoGoContext'
 
 const CENTER = { lat: 54.18, lon: 12.08 }
 
@@ -60,9 +61,25 @@ const S: Record<string, React.CSSProperties> = {
 export default function WeatherPanel() {
   const forecast = useFetch(() => getWeatherForecast(CENTER.lat, CENTER.lon))
   const advisories = useFetch(() => getWeatherAdvisories('DE'))
+  const { update, refreshSignal } = useGoNoGo()
 
-  // Current conditions = index 0 of hourly arrays
+  // Push current conditions to Go/No-Go context when data loads
   const cur = forecast.data
+  useEffect(() => {
+    if (!cur) return
+    update({
+      windKt:   cur.wind_speed_kt[0],
+      gustKt:   cur.gust_speed_kt[0],
+      cloudPct: cur.cloud_cover_pct[0],
+    })
+  }, [cur, update])
+
+  // Refresh when dashboard "↻" is clicked (signal starts at 0; skip initial mount)
+  useEffect(() => {
+    if (refreshSignal === 0) return
+    forecast.refetch()
+    advisories.refetch()
+  }, [refreshSignal]) // eslint-disable-line react-hooks/exhaustive-deps
   const current = cur ? {
     wind_kt:   cur.wind_speed_kt[0],
     wind_dir:  cur.wind_dir_deg[0],

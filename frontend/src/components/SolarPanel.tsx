@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFetch } from '../hooks/useFetch'
 import { getSolarTimes, getSolarElevation } from '../api/client'
+import { useGoNoGo } from '../context/GoNoGoContext'
 
 const CENTER = { lat: 54.18, lon: 12.08 }
 const BERLIN_TZ = 'Europe/Berlin'
@@ -99,6 +100,7 @@ const S: Record<string, React.CSSProperties> = {
 export default function SolarPanel() {
   const times = useFetch(() => getSolarTimes(CENTER.lat, CENTER.lon))
   const elevation = useFetch(() => getSolarElevation(CENTER.lat, CENTER.lon))
+  const { update, refreshSignal } = useGoNoGo()
 
   // Auto-refresh elevation every 60 s — use a ref so the effect doesn't re-run
   const refetchRef = useRef(elevation.refetch)
@@ -108,8 +110,20 @@ export default function SolarPanel() {
     return () => clearInterval(id)
   }, [])
 
-  const t = times.data
+  // Push solar elevation to Go/No-Go context (updates every 60 s via refetch)
   const e = elevation.data
+  useEffect(() => {
+    if (e) update({ solarElevDeg: e.elevation_deg })
+  }, [e, update])
+
+  // Refresh when dashboard "↻" is clicked
+  useEffect(() => {
+    if (refreshSignal === 0) return
+    times.refetch()
+    elevation.refetch()
+  }, [refreshSignal]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const t = times.data
   const period = e?.period ?? 'night'
   const periodColor = PERIOD_COLORS[period] ?? '#94a3b8'
   const periodLabel = PERIOD_LABELS[period] ?? period

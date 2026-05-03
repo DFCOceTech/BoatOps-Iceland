@@ -5,6 +5,8 @@ import WeatherPanel from './WeatherPanel'
 import WavePanel from './WavePanel'
 import SolarPanel from './SolarPanel'
 import SatellitePanel from './SatellitePanel'
+import GoNoDashboard from './GoNoDashboard'
+import { GoNoGoProvider } from '../context/GoNoGoContext'
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -55,16 +57,19 @@ export default function Sidebar() {
         transition: 'opacity 0.15s ease',
         pointerEvents: collapsed ? 'none' : 'auto',
       }}>
-        <h1 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 20px', color: '#f1f5f9',
+        <h1 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: '#f1f5f9',
           borderBottom: '1px solid #2d3148', paddingBottom: 12 }}>
           BoatOps
         </h1>
-        <LayerPanel />
-        <OceanLayerPanel />
-        <WeatherPanel />
-        <WavePanel />
-        <SolarPanel />
-        <SatellitePanel />
+        <GoNoGoProvider>
+          <GoNoDashboard />
+          <LayerPanel />
+          <OceanLayerPanel />
+          <WeatherPanel />
+          <WavePanel />
+          <SolarPanel />
+          <SatellitePanel />
+        </GoNoGoProvider>
       </div>
     </aside>
   )
