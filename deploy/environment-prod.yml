@@ -1,0 +1,27 @@
+name: boatops
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - numpy
+  - xarray
+  - netcdf4
+  - rasterio       # geospatial PNG rendering (GDAL bindings via conda-forge)
+  - matplotlib
+  - requests
+  - pyyaml
+  - python-dotenv
+  - pip
+  - pip:
+      - cachetools
+      - cmocean
+      - suncalc
+      - skyfield
+      - sgp4
+      - copernicusmarine
+      - httpx
+      - "fastapi>=0.115"
+      - "uvicorn[standard]"
+      - "pydantic-settings>=2.0"
+      - anthropic          # optional — needed only if AI synthesis is enabled

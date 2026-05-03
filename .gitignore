@@ -1,6 +1,7 @@
 # Secrets — never commit
 .env
 .env.*
+!.env.example
 secrets_config.yml
 *_credentials*
 *_secrets*
