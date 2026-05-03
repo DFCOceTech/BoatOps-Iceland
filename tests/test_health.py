@@ -18,7 +18,7 @@ def test_health_returns_ok():
     # weather implemented in S02-02 — removed from stub list
     # waves implemented in S02-03 — removed from stub list
     # solar implemented in S02-04 — removed from stub list
-    "/api/satellite/overpasses?west=9.5&south=53.5&east=15.0&north=56.0",
+    # satellite implemented in S02-05 — removed from stub list
     "/api/map/bathymetry?west=9.5&south=53.5&east=15.0&north=56.0",
 ])
 def test_stub_endpoints_return_501(path):
