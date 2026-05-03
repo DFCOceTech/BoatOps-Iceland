@@ -43,5 +43,5 @@ def get_forecast(lat: float, lon: float) -> dict:
         "temperature_c": h["temperature_2m"],
         "precipitation_mm": h["precipitation"],
         "cloud_cover_pct": h["cloudcover"],
-        "last_updated": data.get("generationtime_ms") and f"generated_in_{data['generationtime_ms']:.1f}ms",
+        "last_updated": f"generated_in_{data['generationtime_ms']:.1f}ms" if data.get("generationtime_ms") is not None else None,
     }

@@ -36,10 +36,14 @@ def _t_idx(ds) -> int:
     return int(np.argmin(np.abs(pd.to_datetime(ds.time.values) - _now_naive())))
 
 
-def _nearest_wet_cell(ds, lat: float, lon: float) -> tuple[float, float]:
-    """Return (lat, lon) of the nearest non-NaN grid cell."""
-    hs_mean = ds["VHM0"].mean(dim="time")
-    wet = ~np.isnan(hs_mean.values)
+def _nearest_wet_cell(ds, lat: float, lon: float, var: str) -> tuple[float, float]:
+    """Return (lat, lon) of the nearest non-NaN grid cell for the given variable."""
+    arr = ds[var]
+    if "time" in arr.dims:
+        arr = arr.mean(dim="time")
+    if "depth" in arr.dims:
+        arr = arr.isel(depth=0)
+    wet = ~np.isnan(arr.values)
     lats2d, lons2d = np.meshgrid(ds.latitude.values, ds.longitude.values, indexing="ij")
     dist = (lats2d - lat) ** 2 + (lons2d - lon) ** 2
     dist[~wet] = np.inf
@@ -66,7 +70,7 @@ def get_wave_point(lat: float, lon: float) -> dict:
     )
     hs_test = ds["VHM0"].sel(latitude=lat, longitude=lon, method="nearest")
     if float(np.isnan(hs_test.values).mean()) > 0.5:
-        glat, glon = _nearest_wet_cell(ds, lat, lon)
+        glat, glon = _nearest_wet_cell(ds, lat, lon, var="VHM0")
     else:
         glat = float(hs_test.latitude)
         glon = float(hs_test.longitude)

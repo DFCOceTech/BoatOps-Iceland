@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
 
     # App
-    cors_origins: list[str] = ["*"]
+    cors_origins: list[str] = []  # must be set explicitly in production (e.g. CORS_ORIGINS=https://app.example.com)
     log_level: str = "info"
 
 

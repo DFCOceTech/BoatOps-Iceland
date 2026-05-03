@@ -28,7 +28,7 @@ def get_overlay(west: float, south: float, east: float, north: float):
         media_type="image/png",
         headers={
             "X-Bbox": f"{west},{south},{east},{north}",
-            "X-Timestamp": meta["timestamp"],
-            "X-Colorscale": json.dumps(meta["colorscale"]),
+            "X-Timestamp": meta.get("timestamp") or "",
+            "X-Colorscale": json.dumps(meta.get("colorscale", {})),
         },
     )

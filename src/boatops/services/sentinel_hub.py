@@ -79,7 +79,10 @@ def find_best_scene(token: str, bbox: tuple,
     }
 
 
-@cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(
+    cache=_cache, lock=_lock,
+    key=lambda token, bbox, cloud_max=20.0, days_back=90: cachetools.keys.hashkey(bbox, cloud_max, days_back),
+)
 def get_s2_overlay(token: str, bbox: tuple,
                    cloud_max: float = 20.0, days_back: int = 90) -> tuple[bytes, dict]:
     """Return (png_bytes, metadata) for the best recent S2 true-colour scene over bbox."""
