@@ -28,9 +28,14 @@ async function fetchPng(path: string): Promise<BlobResult> {
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`)
   const blob = await res.blob()
   const bboxStr = res.headers.get('x-bbox') ?? '9.5,53.5,15.0,56.0'
-  const bbox = bboxStr.split(',').map(Number) as [number, number, number, number]
+  const bboxRaw = bboxStr.split(',').map(Number)
+  if (bboxRaw.length !== 4 || bboxRaw.some(isNaN))
+    throw new Error(`Malformed X-Bbox header: "${bboxStr}"`)
+  const bbox = bboxRaw as [number, number, number, number]
   const timestamp = res.headers.get('x-timestamp') ?? ''
-  const colorscale = JSON.parse(res.headers.get('x-colorscale') ?? '{}')
+  let colorscale: BlobResult['colorscale'] = { vmin: 0, vmax: 1, cmap: '' }
+  try { colorscale = JSON.parse(res.headers.get('x-colorscale') ?? '{}') }
+  catch { /* malformed header — use safe default */ }
   return { blob, bbox, timestamp, colorscale }
 }
 

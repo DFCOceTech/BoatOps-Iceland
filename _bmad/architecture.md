@@ -67,9 +67,18 @@ src/boatops/
     claude_client.py   # Claude API client with prompt caching
 ```
 
-### Phase 3 — Frontend (deferred)
+### Phase 3 — Frontend (current)
 
-React + MapLibre GL JS frontend consuming FastAPI endpoints. Animated wind/wave layers (deck.gl or MapLibre wind layer). Satellite overpass overlay on map.
+React + MapLibre GL JS frontend consuming FastAPI endpoints. Animated wind/wave layers via Leaflet.velocity deferred to a later story. Satellite overpass overlay on map.
+
+| Story | Component | Status |
+|-------|-----------|--------|
+| S03-01 | Vite scaffold, API client, MapView, Sidebar shell | ✅ Done |
+| S03-02 | Base map layers, layer toggle panel | Backlog |
+| S03-03 | Oceanographic overlay PNGs + legends | Backlog |
+| S03-04 | Weather + waves panels | Backlog |
+| S03-05 | Solar + satellite panels | Backlog |
+| S03-06 | Go/No-Go dashboard | Backlog |
 
 ## Execution Environment
 

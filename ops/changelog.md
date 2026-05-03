@@ -4,6 +4,11 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 
 ## 2026-05-03
 
+**Epic 03 started — React + MapLibre GL JS frontend**
+
+- **S03-01 ✅** Vite 8 + React 18 + TypeScript scaffold; `maplibre-gl` + `recharts` installed; Vite dev proxy `/api/*` → `localhost:8000`; `src/api/client.ts` typed fetch wrappers for all 14 FastAPI endpoints (JSON + PNG/blob); `MapView.tsx` MapLibre GL JS map centred on Baltic (OSM tiles, nav + scale controls); `Sidebar.tsx` collapsible dark panel; `npm run build` passes, 0 TS errors
+- Gate 4 (Raze): 2 HIGH bugs fixed — bbox header validation (malformed `split().map(Number)` silent NaN), `JSON.parse` on `X-Colorscale` header wrapped in try/catch with safe default
+
 **Epic 02 ✅ Complete — FastAPI backend, 6/6 stories, 60 tests**
 
 - **S02-01 ✅** FastAPI skeleton: `src/boatops/` package, pydantic-settings config, `cachetools.TTLCache` cache factory, per-capability router stubs → 501, `/health` endpoint
