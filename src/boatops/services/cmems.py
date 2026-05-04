@@ -106,11 +106,13 @@ def get_wave_overlay(bbox: tuple) -> tuple[bytes, dict]:
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
 
-    png = to_png_bytes(hs, lats, cmocean.cm.amp, plt.Normalize(vmin=0, vmax=2.5))
+    vmax = float(np.nanpercentile(hs[~np.isnan(hs)], 99)) if np.any(~np.isnan(hs)) else 2.5
+    vmax = max(vmax, 0.1)   # never collapse to a zero range
+    png = to_png_bytes(hs, lats, cmocean.cm.amp, plt.Normalize(vmin=0, vmax=vmax))
     meta = {
         "bbox": list(bbox),
         "timestamp": timestamp,
-        "colorscale": {"vmin": 0.0, "vmax": 2.5, "cmap": "cmocean.amp"},
+        "colorscale": {"vmin": 0.0, "vmax": round(vmax, 2), "cmap": "cmocean.amp"},
     }
     return png, meta
 
@@ -136,7 +138,7 @@ def get_bathymetry_overlay(bbox: tuple) -> tuple[bytes, dict]:
 
 @cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
 def get_sst_overlay(bbox: tuple) -> tuple[bytes, dict]:
-    """SST L4 (°C) — DMI NRT product, cmocean.thermal 4–20 °C."""
+    """SST L4 (°C) — DMI NRT product, autoscaled to actual data range."""
     west, south, east, north = bbox
     ds = copernicusmarine.open_dataset(
         dataset_id=SST_DATASET, variables=["analysed_sst"],
@@ -147,14 +149,18 @@ def get_sst_overlay(bbox: tuple) -> tuple[bytes, dict]:
     sst = ds["analysed_sst"].isel(time=ti).values.astype(float) - 273.15
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
-    png = to_png_bytes(sst, lats, cmocean.cm.thermal, plt.Normalize(vmin=4, vmax=20))
+    vmin = round(float(np.nanpercentile(sst, 2)),  1)
+    vmax = round(float(np.nanpercentile(sst, 98)), 1)
+    if vmax <= vmin:
+        vmax = vmin + 1.0
+    png = to_png_bytes(sst, lats, cmocean.cm.thermal, plt.Normalize(vmin=vmin, vmax=vmax))
     return png, {"bbox": list(bbox), "timestamp": timestamp,
-                 "colorscale": {"vmin": 4.0, "vmax": 20.0, "cmap": "cmocean.thermal"}}
+                 "colorscale": {"vmin": vmin, "vmax": vmax, "cmap": "cmocean.thermal"}}
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
 def get_salinity_overlay(bbox: tuple) -> tuple[bytes, dict]:
-    """Surface salinity (PSU, depth[0]) — cmocean.haline 0–25 PSU."""
+    """Surface salinity (PSU, depth[0]) — autoscaled to actual data range."""
     west, south, east, north = bbox
     ds = copernicusmarine.open_dataset(
         dataset_id=PHY_DATASET, variables=["so"],
@@ -166,14 +172,24 @@ def get_salinity_overlay(bbox: tuple) -> tuple[bytes, dict]:
     sal = ds["so"].isel(time=ti, depth=0).values.astype(float)
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
-    png = to_png_bytes(sal, lats, cmocean.cm.haline, plt.Normalize(vmin=0, vmax=25))
+    vmin = round(float(np.nanpercentile(sal, 2)),  1)
+    vmax = round(float(np.nanpercentile(sal, 98)), 1)
+    if vmax <= vmin:
+        vmax = vmin + 1.0
+    png = to_png_bytes(sal, lats, cmocean.cm.haline, plt.Normalize(vmin=vmin, vmax=vmax))
     return png, {"bbox": list(bbox), "timestamp": timestamp,
-                 "colorscale": {"vmin": 0.0, "vmax": 25.0, "cmap": "cmocean.haline"}}
+                 "colorscale": {"vmin": vmin, "vmax": vmax, "cmap": "cmocean.haline"}}
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
 def get_currents_overlay(bbox: tuple) -> tuple[bytes, dict]:
-    """Surface current quiver (depth[0]) — cmocean.speed, max 0.5 m/s."""
+    """Surface current quiver (depth[0]) — autoscaled, hard cap 1.5 m/s.
+
+    CMEMS model output can contain fill-value artefacts near land/boundaries
+    that survive masking and inflate the naive nanmax.  Using the 99.5th
+    percentile and capping at 1.5 m/s gives a physically realistic scale
+    (Baltic surface currents are typically 0–0.5 m/s, seldom exceed 1 m/s).
+    """
     west, south, east, north = bbox
     ds = copernicusmarine.open_dataset(
         dataset_id=PHY_DATASET, variables=["uo", "vo"],
@@ -187,14 +203,22 @@ def get_currents_overlay(bbox: tuple) -> tuple[bytes, dict]:
     lats = ds.latitude.values
     lons = ds.longitude.values
     timestamp = str(ds.time.values[ti])[:16]
-    png = to_quiver_png_bytes(lons, lats, u, v, cmap=cmocean.cm.speed, speed_max=0.5)
+
+    speed = np.sqrt(u ** 2 + v ** 2)
+    valid = speed[~np.isnan(speed)]
+    speed_max = float(np.nanpercentile(valid, 99.5)) if valid.size else 0.5
+    speed_max = min(speed_max, 1.5)   # physical cap — 4–20 m/s values are artefacts
+    speed_max = max(speed_max, 0.05)  # never collapse to a zero range
+
+    png = to_quiver_png_bytes(lons, lats, u, v, cmap=cmocean.cm.speed, speed_max=speed_max)
     return png, {"bbox": list(bbox), "timestamp": timestamp,
-                 "colorscale": {"vmin": 0.0, "vmax": 0.5, "cmap": "cmocean.speed"}}
+                 "colorscale": {"vmin": 0.0, "vmax": round(speed_max, 2),
+                                "cmap": "cmocean.speed"}}
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
 def get_chlorophyll_overlay(bbox: tuple) -> tuple[bytes, dict]:
-    """Surface chlorophyll-a (mg/m³, depth[0]) — cmocean.algae, log scale 0.1–50."""
+    """Surface chlorophyll-a (mg/m³, depth[0]) — log scale, autoscaled."""
     west, south, east, north = bbox
     ds = copernicusmarine.open_dataset(
         dataset_id=BGC_DATASET, variables=["chl"],
@@ -205,15 +229,18 @@ def get_chlorophyll_overlay(bbox: tuple) -> tuple[bytes, dict]:
     chl = ds["chl"].isel(time=ti, depth=0).values.astype(float)
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
-    png = to_png_bytes(chl, lats, cmocean.cm.algae, LogNorm(vmin=0.1, vmax=50))
+    pos = chl[chl > 0]
+    vmin = max(float(np.nanpercentile(pos, 2)),  0.001) if pos.size else 0.1
+    vmax = max(float(np.nanpercentile(pos, 98)), vmin * 10) if pos.size else 50.0
+    png = to_png_bytes(chl, lats, cmocean.cm.algae, LogNorm(vmin=vmin, vmax=vmax))
     return png, {"bbox": list(bbox), "timestamp": timestamp,
-                 "colorscale": {"vmin": 0.1, "vmax": 50.0, "cmap": "cmocean.algae",
-                                "scale": "log"}}
+                 "colorscale": {"vmin": round(vmin, 3), "vmax": round(vmax, 1),
+                                "cmap": "cmocean.algae", "scale": "log"}}
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
 def get_oxygen_overlay(bbox: tuple) -> tuple[bytes, dict]:
-    """Bottom dissolved oxygen (mmol/m³) — cmocean.oxy 0–350; <63 = hypoxic."""
+    """Bottom dissolved oxygen (mmol/m³) — autoscaled; <63 = hypoxic."""
     west, south, east, north = bbox
     ds = copernicusmarine.open_dataset(
         dataset_id=BGC_DATASET, variables=["o2b"],
@@ -225,7 +252,11 @@ def get_oxygen_overlay(bbox: tuple) -> tuple[bytes, dict]:
     o2b = ds["o2b"].isel(time=ti).values.astype(float)
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
-    png = to_png_bytes(o2b, lats, cmocean.cm.oxy, plt.Normalize(vmin=0, vmax=350))
+    vmin = max(0.0, round(float(np.nanpercentile(o2b, 2)),  1))
+    vmax =         round(float(np.nanpercentile(o2b, 98)), 1)
+    if vmax <= vmin:
+        vmax = vmin + 10.0
+    png = to_png_bytes(o2b, lats, cmocean.cm.oxy, plt.Normalize(vmin=vmin, vmax=vmax))
     return png, {"bbox": list(bbox), "timestamp": timestamp,
-                 "colorscale": {"vmin": 0.0, "vmax": 350.0, "cmap": "cmocean.oxy",
+                 "colorscale": {"vmin": vmin, "vmax": vmax, "cmap": "cmocean.oxy",
                                 "hypoxia_threshold_mmol_m3": 63}}
