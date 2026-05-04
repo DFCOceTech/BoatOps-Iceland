@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import LayerPanel from './LayerPanel'
 import OceanLayerPanel from './OceanLayerPanel'
+import WindLayerPanel from './WindLayerPanel'
 import WeatherPanel from './WeatherPanel'
 import WavePanel from './WavePanel'
 import SolarPanel from './SolarPanel'
@@ -68,6 +69,7 @@ export default function Sidebar() {
           <GoNoGoProvider>
             <GoNoDashboard />
             <LayerPanel />
+            <WindLayerPanel />
             <OceanLayerPanel />
             <WeatherPanel />
             <WavePanel />

@@ -81,6 +81,24 @@ export const getWeatherForecast = (lat = CENTER.lat, lon = CENTER.lon) =>
 export const getWeatherAdvisories = (country = 'DE') =>
   fetchJson<AdvisoryCollection>(`/api/weather/advisories?country=${country}`)
 
+// u[row][col]: row 0 = southernmost lat, col 0 = westernmost lon
+// U = eastward m/s, V = northward m/s
+// vmax_speed = sqrt(max(u²+v²)) — autoscale reference for the particle color ramp
+export interface WindGrid {
+  u: number[][]
+  v: number[][]
+  width: number
+  height: number
+  bbox: [number, number, number, number]   // [west, south, east, north]
+  timestamp: string
+  vmax_speed: number
+}
+
+export const getWindGrid = (bbox = AOI) =>
+  fetchJson<WindGrid>(
+    `/api/weather/wind-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
+  )
+
 // ── /api/waves ───────────────────────────────────────────────────────────────
 
 export interface WaveForecast {
