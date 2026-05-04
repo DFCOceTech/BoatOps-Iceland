@@ -2,6 +2,15 @@
 
 Rolling 2-week work log. Remove entries older than 2 weeks.
 
+## 2026-05-04
+
+**Animated wind overlay + autoscaled colormaps**
+
+- **Wind overlay**: `GET /api/weather/wind-grid` — Open-Meteo batch request for U/V 10m wind on a 0.25° grid (288 pts, single call); `WindLayerPanel.tsx` — 600-particle canvas animation over MapLibre, geographic lat/lon particle positions with bilinear U/V interpolation, zoom-invariant visual speed (150 px/s at max wind), HSL ramp autoscaled to `vmax_speed` (blue=calm → red=max), `destination-out` fade for trail effect, ResizeObserver + zoom-clear
+- **Autoscaled colormaps** (`cmems.py`): all overlays now use `nanpercentile`-based vmin/vmax instead of hardcoded values — SST (p2–p98 °C), salinity (p2–p98 PSU), wave Hs (0–p99 m), chlorophyll (log, p2–p98 mg/m³ of positive values), bottom O2 (p2–p98 mmol/m³). Legends show actual data range per fetch.
+- **Currents artefact fix**: CMEMS `uo`/`vo` fill-value artefacts near land/boundaries inflate naive `nanmax` to 4–20 m/s (unrealistic; Baltic currents are 0–1 m/s). Fixed with 99.5th percentile + hard 1.5 m/s physical cap.
+- **Date parsing fix**: `parseIso()` helper added to SolarPanel + SatellitePanel — Python's `isoformat()` emits `+00:00` not `Z`; old `endsWith('Z')` guard was appending a second timezone suffix → `RangeError` → black screen.
+
 ## 2026-05-03
 
 **Production deployment — Docker Compose ✅**
