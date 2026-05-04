@@ -38,14 +38,6 @@ export const OCEAN_LAYER_DEFS: ApiLayerDef[] = [
     gradient: 'linear-gradient(to right, #2a0a4a, #1a5aaa, #1ec8c8, #a8d838, #d8e422)',
   },
   {
-    id: 'api-currents',
-    label: 'Surface Currents',
-    unit: 'm/s',
-    fetch: () => api.getCurrents(AOI),
-    // cmocean.speed: dark → blue → green → yellow
-    gradient: 'linear-gradient(to right, #0d0d0d, #1a3a7a, #1a9a6e, #c8d84a, #f8f8d0)',
-  },
-  {
     id: 'api-chlorophyll',
     label: 'Surface Chlorophyll-a',
     unit: 'mg/m³',

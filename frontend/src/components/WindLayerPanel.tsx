@@ -218,8 +218,10 @@ export default function WindLayerPanel() {
     ro.observe(container)
 
     // Animation loop
+    let cancelled = false
     let lastTime = performance.now()
     const frame = (now: number) => {
+      if (cancelled) return
       const dt  = Math.min((now - lastTime) / 1000, 0.05)
       lastTime  = now
       const g   = gridRef.current
@@ -247,6 +249,7 @@ export default function WindLayerPanel() {
     animRef.current = requestAnimationFrame(frame)
 
     return () => {
+      cancelled = true
       cancelAnimationFrame(animRef.current)
       m.off('zoom', onZoom)
       ro.disconnect()

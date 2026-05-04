@@ -16,8 +16,9 @@ from matplotlib.colors import LogNorm
 from boatops.cache import make_cache
 from boatops.utils.raster import to_png_bytes, to_quiver_png_bytes
 
-_cache, _lock = make_cache(ttl_seconds=3600)        # 1 h  — oceanographic layers
+_cache, _lock           = make_cache(ttl_seconds=3600)   # 1 h  — oceanographic layers
 _bathy_cache, _bathy_lock = make_cache(ttl_seconds=86400)  # 24 h — static bathymetry
+_grid_cache, _grid_lock = make_cache(ttl_seconds=3600)   # 1 h  — current vector grids
 
 WAVE_DATASET   = "cmems_mod_bal_wav_anfc_PT1H-i"
 STATIC_DATASET = "cmems_mod_bal_phy_anfc_static"
@@ -260,3 +261,60 @@ def get_oxygen_overlay(bbox: tuple) -> tuple[bytes, dict]:
     return png, {"bbox": list(bbox), "timestamp": timestamp,
                  "colorscale": {"vmin": vmin, "vmax": vmax, "cmap": "cmocean.oxy",
                                 "hypoxia_threshold_mmol_m3": 63}}
+
+
+@cachetools.cached(cache=_grid_cache, lock=_grid_lock, key=cachetools.keys.hashkey)
+def get_currents_grid(
+    west: float, south: float, east: float, north: float,
+    step: float = 0.25,
+) -> dict:
+    """Surface current U/V components on a regular grid for particle animation.
+
+    Subsamples the native ~1 nmi CMEMS grid to `step`-degree resolution using
+    nearest-neighbour selection.  Returns the same JSON schema as get_wind_grid
+    so the frontend can reuse the same particle renderer.
+
+    vmax_speed uses the 99.5th percentile + 1.5 m/s physical cap (same logic
+    as get_currents_overlay) to protect against fill-value artefacts.
+    """
+    ds = copernicusmarine.open_dataset(
+        dataset_id=PHY_DATASET, variables=["uo", "vo"],
+        minimum_longitude=west, maximum_longitude=east,
+        minimum_latitude=south, maximum_latitude=north,
+        minimum_depth=0.0, maximum_depth=2.0,
+    )
+    ti = _t_idx(ds)
+    u_da = ds["uo"].isel(time=ti, depth=0)
+    v_da = ds["vo"].isel(time=ti, depth=0)
+
+    # Subsample to coarser grid with nearest-neighbour selection
+    target_lats = np.arange(south, north + step * 0.5, step)
+    target_lons = np.arange(west,  east  + step * 0.5, step)
+    u_sub = u_da.sel(latitude=target_lats, longitude=target_lons, method="nearest")
+    v_sub = v_da.sel(latitude=target_lats, longitude=target_lons, method="nearest")
+
+    u_arr = u_sub.values.astype(float)
+    v_arr = v_sub.values.astype(float)
+    n_lats, n_lons = u_arr.shape
+
+    speed = np.sqrt(u_arr ** 2 + v_arr ** 2)
+    valid = speed[~np.isnan(speed)]
+    vmax_speed = float(np.nanpercentile(valid, 99.5)) if valid.size else 0.3
+    vmax_speed = min(vmax_speed, 1.5)
+    vmax_speed = max(vmax_speed, 0.01)
+
+    timestamp = str(ds.time.values[ti])[:16]
+
+    def _row(arr: np.ndarray, i: int) -> list:
+        return [None if np.isnan(arr[i, j]) else round(float(arr[i, j]), 4)
+                for j in range(n_lons)]
+
+    return {
+        "u": [_row(u_arr, i) for i in range(n_lats)],
+        "v": [_row(v_arr, i) for i in range(n_lats)],
+        "width": n_lons,
+        "height": n_lats,
+        "bbox": [west, south, east, north],
+        "timestamp": timestamp,
+        "vmax_speed": round(vmax_speed, 3),
+    }

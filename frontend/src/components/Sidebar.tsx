@@ -2,6 +2,7 @@ import { useState } from 'react'
 import LayerPanel from './LayerPanel'
 import OceanLayerPanel from './OceanLayerPanel'
 import WindLayerPanel from './WindLayerPanel'
+import CurrentsLayerPanel from './CurrentsLayerPanel'
 import WeatherPanel from './WeatherPanel'
 import WavePanel from './WavePanel'
 import SolarPanel from './SolarPanel'
@@ -70,6 +71,7 @@ export default function Sidebar() {
             <GoNoDashboard />
             <LayerPanel />
             <WindLayerPanel />
+            <CurrentsLayerPanel />
             <OceanLayerPanel />
             <WeatherPanel />
             <WavePanel />

@@ -36,7 +36,7 @@ The system SHALL render the DMI Baltic Sea SST L4 NRT product (`analysed_sst`, c
 The system SHALL render CMEMS Baltic Physics surface salinity (`so` at depth ≈ 0.5 m) as a colour-mapped ImageOverlay, with land/NaN cells transparent.
 
 ### REQ-MAP-014: Baltic Surface Current Overlay
-The system SHALL render CMEMS Baltic Physics surface current vectors (`uo`, `vo` at depth ≈ 0.5 m) as a subsampled quiver ImageOverlay. Current speed SHALL be encoded as colour.
+The system SHALL render CMEMS Baltic Physics surface current vectors (`uo`, `vo` at depth ≈ 0.5 m) as an animated particle overlay using the same canvas particle system as the wind overlay. Current speed SHALL be encoded as colour (cmocean.speed approximation: navy → teal → lime). The overlay SHALL be fetched via `GET /api/map/currents-grid` returning a JSON velocity grid at 0.25° resolution; `vmax_speed` SHALL be capped at the 99.5th percentile with a 1.5 m/s physical ceiling.
 
 ### REQ-MAP-015: Baltic Chlorophyll Overlay
 The system SHALL render CMEMS Baltic BGC surface chlorophyll (`chl` at depth ≈ 0.5 m) as a log-scale colour-mapped ImageOverlay, with land/NaN cells transparent.
@@ -103,10 +103,10 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 **WHEN** `so` (depth=0) is colour-mapped to a PNG with NaN cells transparent
 **THEN** the overlay displays; salinity values in [0, 35] PSU; array not all-NaN
 
-### SCENARIO-MAP-CUR-OVERLAY-001: Surface current vectors render as ImageOverlay
+### SCENARIO-MAP-CUR-OVERLAY-001: Surface current animated particle overlay renders
 **GIVEN** CMEMS Baltic Physics `uo`, `vo` at surface for the current day
-**WHEN** the vectors are subsampled and rendered as a transparent quiver PNG
-**THEN** the overlay displays; speed values ≥ 0 m/s; quiver grid is non-empty
+**WHEN** `GET /api/map/currents-grid` is called for the Baltic AOI
+**THEN** the response is a JSON grid with `u`, `v`, `width`, `height`, `bbox`, `timestamp`, `vmax_speed`; `vmax_speed` is ≤ 1.5 m/s; the frontend animates particles over the map canvas
 
 ### SCENARIO-MAP-CHL-OVERLAY-001: Chlorophyll renders as ImageOverlay
 **GIVEN** CMEMS Baltic BGC surface chlorophyll for the current day over the Baltic AOI

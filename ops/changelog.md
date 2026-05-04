@@ -2,6 +2,16 @@
 
 Rolling 2-week work log. Remove entries older than 2 weeks.
 
+## 2026-05-05
+
+**Animated surface-currents overlay**
+
+- **`GET /api/map/currents-grid`**: new endpoint in `map_layers.py`; `get_currents_grid()` in `cmems.py` fetches CMEMS `cmems_mod_bal_phy_anfc_P1D-m` (`uo`, `vo` at depth[0]), subsamples to 0.25° grid via `xarray.sel(method='nearest')`, caps `vmax_speed` at `nanpercentile(speed, 99.5)` + 1.5 m/s physical ceiling, returns same JSON shape as wind grid
+- **`CurrentsLayerPanel.tsx`**: animated particle overlay using same canvas system as `WindLayerPanel` — 500 particles, `TARGET_PX_PER_S=80` (slower than wind's 150), cmocean.speed color ramp (navy→teal→lime), z-index 2 (above wind canvas at z-index 1)
+- **Static currents quiver removed**: `api-currents` entry removed from `oceanLayers.ts`; `GET /api/map/currents` PNG endpoint retained in backend but no longer exposed in frontend
+- **Bug fixes applied to both particle panels** (Raze): `cancelled` flag in animation frame loop prevents zombie rAF callbacks after component unmount; `fetchIdRef` stale-fetch guard prevents double-canvas from concurrent refreshes; `vmax_speed=0` guard in `tickParticle` prevents particles animating at max speed on a calm grid; fetch failure sets `visible=false` instead of leaving checkbox checked with no overlay; `spawn()` caps initial `age` below `maxAge` so no dead-on-arrival particles
+- Spec updated: REQ-MAP-014 + SCENARIO-MAP-CUR-OVERLAY-001 updated from quiver PNG to animated particle overlay
+
 ## 2026-05-04
 
 **Animated wind overlay + autoscaled colormaps**

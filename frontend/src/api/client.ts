@@ -99,6 +99,11 @@ export const getWindGrid = (bbox = AOI) =>
     `/api/weather/wind-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
   )
 
+export const getCurrentsGrid = (bbox = AOI) =>
+  fetchJson<WindGrid>(
+    `/api/map/currents-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
+  )
+
 // ── /api/waves ───────────────────────────────────────────────────────────────
 
 export interface WaveForecast {

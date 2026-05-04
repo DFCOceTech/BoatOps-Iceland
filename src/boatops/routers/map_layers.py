@@ -47,6 +47,19 @@ def get_currents(west: float, south: float, east: float, north: float):
     return _png_response(cmems.get_currents_overlay, (west, south, east, north))
 
 
+@router.get("/currents-grid")
+def get_currents_grid(
+    west: float = 9.5, south: float = 53.5,
+    east: float = 15.0, north: float = 56.0,
+    step: float = 0.25,
+):
+    try:
+        return cmems.get_currents_grid(west, south, east, north, step)
+    except Exception as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
+
+
 @router.get("/chlorophyll")
 def get_chlorophyll(west: float, south: float, east: float, north: float):
     return _png_response(cmems.get_chlorophyll_overlay, (west, south, east, north))
