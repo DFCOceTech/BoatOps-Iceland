@@ -60,6 +60,27 @@ def get_currents_grid(
         raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
 
 
+@router.get("/gbif-tiles/{z}/{x}/{y}.png", response_class=Response)
+def gbif_tile_proxy(z: int, x: int, y: int,
+                    taxon_key: int, style: str = "classic.point",
+                    bin: str | None = None, hex_per_tile: int = 10):
+    """Proxy GBIF occurrence density tiles to avoid browser URL-encoding of @1x.png."""
+    import httpx as _httpx
+    params: dict = {"taxonKey": taxon_key, "style": style}
+    if bin:
+        params["bin"] = bin
+        params["hexPerTile"] = hex_per_tile
+    url = f"https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png"
+    try:
+        r = _httpx.get(url, params=params, timeout=10,
+                       headers={"User-Agent": "BoatOps/1.0 (+https://github.com/DFCOceTech)"})
+        r.raise_for_status()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"GBIF tile error: {exc}")
+    return Response(content=r.content, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
 @router.get("/isobaths")
 def get_isobaths(west: float, south: float, east: float, north: float):
     try:

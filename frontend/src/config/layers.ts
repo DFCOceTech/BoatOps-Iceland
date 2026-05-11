@@ -17,10 +17,11 @@ const wms = (baseUrl: string, layer: string, extra = '') =>
   `&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256` +
   `&FORMAT=image/png&TRANSPARENT=TRUE&STYLES=${extra}`
 
-// GBIF tile base URL — XYZ raster tiles, transparent background, no auth required
+// GBIF occurrence tiles via our backend proxy (avoids browser URL-encoding of @1x.png).
+// bin=hex + hexPerTile=10 aggregates points into hexagons large enough to see at z=8–12.
 const GBIF_TILES = (taxonKey: number, style: string) =>
-  `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png` +
-  `?taxonKey=${taxonKey}&style=${style}`
+  `/api/map/gbif-tiles/{z}/{x}/{y}.png` +
+  `?taxon_key=${taxonKey}&style=${style}&bin=hex&hex_per_tile=10`
 
 export const BASE_LAYER_DEFS: RasterLayerDef[] = [
   {
@@ -70,13 +71,13 @@ export const BASE_LAYER_DEFS: RasterLayerDef[] = [
     defaultVisible: false,
     source: {
       type: 'raster',
-      // taxonKey 2863967 = Zostera marina; green.point = transparent PNG with green dots
-      tiles: [GBIF_TILES(2863967, 'green.point')],
+      // classic.point = bright yellow (#ffff00) — high contrast on dark basemap
+      tiles: [GBIF_TILES(2863967, 'classic.point')],
       tileSize: 256,
       attribution: '© <a href="https://www.gbif.org/species/2863967">GBIF occurrence records</a>',
       maxzoom: 14,
     },
-    paint: { 'raster-opacity': 0.85 },
+    paint: { 'raster-opacity': 0.9 },
   },
   {
     id: 'gbif-macroalgae',
@@ -84,12 +85,12 @@ export const BASE_LAYER_DEFS: RasterLayerDef[] = [
     defaultVisible: false,
     source: {
       type: 'raster',
-      // taxonKey 8222574 = Fucus vesiculosus; fire.point = transparent PNG with warm dots
-      tiles: [GBIF_TILES(8222574, 'fire.point')],
+      // purpleYellow.point differentiates from Zostera yellow
+      tiles: [GBIF_TILES(8222574, 'purpleYellow.point')],
       tileSize: 256,
       attribution: '© <a href="https://www.gbif.org/species/8222574">GBIF occurrence records</a>',
       maxzoom: 14,
     },
-    paint: { 'raster-opacity': 0.85 },
+    paint: { 'raster-opacity': 0.9 },
   },
 ]
