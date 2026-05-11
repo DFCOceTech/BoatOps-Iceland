@@ -211,4 +211,4 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 - 3D map view (Phase 3 frontend)
 - AOI draw tool (Phase 3 frontend; Phase 2 session state)
 - GeoTIFF upload endpoint (Phase 2 backend; Phase 3 frontend)
-- Isobath frontend layer toggle in LayerPanel (currently only served via API; no map layer rendered yet — Phase 4)
+- Isobath frontend layer toggle in LayerPanel (currently a standalone `IsobathLayer` panel in the sidebar — Phase 4 could integrate into main LayerPanel)
