@@ -76,17 +76,19 @@ def get_gbif_occurrences(
     """
     import httpx as _httpx
     try:
+        # basisOfRecord must be repeated (not comma-joined) per GBIF API contract
         resp = _httpx.get(
             "https://api.gbif.org/v1/occurrence/search",
-            params={
-                "taxonKey": taxon_key,
-                "decimalLongitude": f"{west},{east}",
-                "decimalLatitude": f"{south},{north}",
-                "hasGeospatialIssue": "false",
-                "hasCoordinate": "true",
-                "basisOfRecord": "HUMAN_OBSERVATION,MACHINE_OBSERVATION",
-                "limit": min(limit, 500),
-            },
+            params=[
+                ("taxonKey",           taxon_key),
+                ("decimalLongitude",   f"{west},{east}"),
+                ("decimalLatitude",    f"{south},{north}"),
+                ("hasGeospatialIssue", "false"),
+                ("hasCoordinate",      "true"),
+                ("basisOfRecord",      "HUMAN_OBSERVATION"),
+                ("basisOfRecord",      "MACHINE_OBSERVATION"),
+                ("limit",              min(limit, 500)),
+            ],
             timeout=20,
             headers={"User-Agent": "BoatOps/1.0"},
         )
