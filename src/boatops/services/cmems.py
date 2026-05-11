@@ -18,8 +18,21 @@ from boatops.utils.raster import to_png_bytes, to_quiver_png_bytes
 
 _cache, _lock               = make_cache(ttl_seconds=3600)   # 1 h  — oceanographic layers
 _bathy_cache, _bathy_lock   = make_cache(ttl_seconds=86400)  # 24 h — static bathymetry PNG
-_isobath_cache, _isobath_lock = make_cache(ttl_seconds=86400)  # 24 h — isobath GeoJSON (separate from bathy PNG to avoid key collision)
+_isobath_cache, _isobath_lock = make_cache(ttl_seconds=86400)  # 24 h — isobath GeoJSON
 _grid_cache, _grid_lock     = make_cache(ttl_seconds=3600)   # 1 h  — current vector grids
+
+
+def _overlay_key(prefix: str):
+    """Key factory that namespaces cached overlay functions by name.
+
+    All overlay functions share _cache but accept the same bbox argument,
+    so their default hashkey(bbox) is identical.  Prefixing by function
+    identity avoids cache collisions that would cause one overlay to return
+    another overlay's PNG and colorscale.
+    """
+    def key(*args, **kwargs):
+        return cachetools.keys.hashkey(prefix, *args, **kwargs)
+    return key
 
 WAVE_DATASET   = "cmems_mod_bal_wav_anfc_PT1H-i"
 STATIC_DATASET = "cmems_mod_bal_phy_anfc_static"
@@ -91,7 +104,7 @@ def get_wave_point(lat: float, lon: float) -> dict:
     }
 
 
-@cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('wave'))
 def get_wave_overlay(bbox: tuple) -> tuple[bytes, dict]:
     """Current Hs field as RGBA PNG bytes + metadata dict."""
     west, south, east, north = bbox
@@ -200,7 +213,7 @@ def get_isobaths(bbox: tuple, depths: tuple = (10, 25, 100)) -> dict:
     return {"type": "FeatureCollection", "features": features}
 
 
-@cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('sst'))
 def get_sst_overlay(bbox: tuple) -> tuple[bytes, dict]:
     """SST L4 (°C) — DMI NRT product, autoscaled to actual data range."""
     west, south, east, north = bbox
@@ -222,7 +235,7 @@ def get_sst_overlay(bbox: tuple) -> tuple[bytes, dict]:
                  "colorscale": {"vmin": vmin, "vmax": vmax, "cmap": "cmocean.thermal"}}
 
 
-@cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('salinity'))
 def get_salinity_overlay(bbox: tuple) -> tuple[bytes, dict]:
     """Surface salinity (PSU, depth[0]) — autoscaled to actual data range."""
     west, south, east, north = bbox
@@ -245,7 +258,7 @@ def get_salinity_overlay(bbox: tuple) -> tuple[bytes, dict]:
                  "colorscale": {"vmin": vmin, "vmax": vmax, "cmap": "cmocean.haline"}}
 
 
-@cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('currents'))
 def get_currents_overlay(bbox: tuple) -> tuple[bytes, dict]:
     """Surface current quiver (depth[0]) — autoscaled, hard cap 1.5 m/s.
 
@@ -280,7 +293,7 @@ def get_currents_overlay(bbox: tuple) -> tuple[bytes, dict]:
                                 "cmap": "cmocean.speed"}}
 
 
-@cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('chlorophyll'))
 def get_chlorophyll_overlay(bbox: tuple) -> tuple[bytes, dict]:
     """Surface chlorophyll-a (mg/m³, depth[0]) — log scale, autoscaled."""
     west, south, east, north = bbox
@@ -302,7 +315,7 @@ def get_chlorophyll_overlay(bbox: tuple) -> tuple[bytes, dict]:
                                 "cmap": "cmocean.algae", "scale": "log"}}
 
 
-@cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('oxygen'))
 def get_oxygen_overlay(bbox: tuple) -> tuple[bytes, dict]:
     """Bottom dissolved oxygen (mmol/m³) — autoscaled; <63 = hypoxic."""
     west, south, east, north = bbox
