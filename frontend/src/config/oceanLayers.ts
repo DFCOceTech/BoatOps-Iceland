@@ -50,7 +50,7 @@ export const OCEAN_LAYER_DEFS: ApiLayerDef[] = [
     label: 'Bottom Dissolved O₂',
     unit: 'mmol/m³',
     fetch: () => api.getOxygen(AOI),
-    // cmocean.oxy: dark purple (hypoxic) → blue → green → yellow
-    gradient: 'linear-gradient(to right, #2a0a3a, #1a2a8a, #1a8a6a, #88c838, #d8e422)',
+    // cmocean.oxy: dark maroon (anoxic/hypoxic) → grey → light grey → golden yellow (oxygenated)
+    gradient: 'linear-gradient(to right, #3f0505, #69060e, #6c6c6a, #b2b2b0, #dcae19)',
   },
 ]
