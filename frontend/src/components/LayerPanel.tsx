@@ -1,5 +1,6 @@
 import { useLayerVisibility } from '../hooks/useLayerVisibility'
 import { BASE_LAYER_DEFS } from '../config/layers'
+import EmodnetPanel from './EmodnetPanel'
 
 const styles: Record<string, React.CSSProperties> = {
   section:  { marginBottom: 24 },
@@ -31,7 +32,12 @@ export default function LayerPanel() {
             />
             <span style={styles.label}>{def.label}</span>
           </label>
-          {def.legendUrl && visibility[def.id] && (
+
+          {/* EMODnet: custom interactive panel (filtered legend + click popup) */}
+          {def.id === 'emodnet' && visibility['emodnet'] && <EmodnetPanel />}
+
+          {/* Other WMS layers with a legend image */}
+          {def.id !== 'emodnet' && def.legendUrl && visibility[def.id] && (
             <div style={styles.legend}>
               <img
                 src={def.legendUrl}

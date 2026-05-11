@@ -57,9 +57,6 @@ export const BASE_LAYER_DEFS: RasterLayerDef[] = [
       attribution: '© <a href="https://www.emodnet-seabedhabitats.eu">EMODnet Seabed Habitats</a>',
     },
     paint: { 'raster-opacity': 0.7 },
-    legendUrl:
-      'https://ows.emodnet-seabedhabitats.eu/geoserver/emodnet_view/wms' +
-      '?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetLegendGraphic' +
-      '&LAYER=eusm_helcom_group&FORMAT=image/png&TRANSPARENT=TRUE',
+    // Legend and click interaction handled by EmodnetPanel (LayerPanel special-cases this id)
   },
 ]
