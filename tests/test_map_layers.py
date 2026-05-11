@@ -83,6 +83,7 @@ def _bgc_ds():
 def clear_caches():
     cmems._cache.clear()
     cmems._bathy_cache.clear()
+    cmems._isobath_cache.clear()
     if hasattr(cmems, '_grid_cache'):
         cmems._grid_cache.clear()
     yield

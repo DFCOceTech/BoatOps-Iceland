@@ -16,9 +16,10 @@ from matplotlib.colors import LogNorm
 from boatops.cache import make_cache
 from boatops.utils.raster import to_png_bytes, to_quiver_png_bytes
 
-_cache, _lock           = make_cache(ttl_seconds=3600)   # 1 h  — oceanographic layers
-_bathy_cache, _bathy_lock = make_cache(ttl_seconds=86400)  # 24 h — static bathymetry
-_grid_cache, _grid_lock = make_cache(ttl_seconds=3600)   # 1 h  — current vector grids
+_cache, _lock               = make_cache(ttl_seconds=3600)   # 1 h  — oceanographic layers
+_bathy_cache, _bathy_lock   = make_cache(ttl_seconds=86400)  # 24 h — static bathymetry PNG
+_isobath_cache, _isobath_lock = make_cache(ttl_seconds=86400)  # 24 h — isobath GeoJSON (separate from bathy PNG to avoid key collision)
+_grid_cache, _grid_lock     = make_cache(ttl_seconds=3600)   # 1 h  — current vector grids
 
 WAVE_DATASET   = "cmems_mod_bal_wav_anfc_PT1H-i"
 STATIC_DATASET = "cmems_mod_bal_phy_anfc_static"
@@ -137,7 +138,7 @@ def get_bathymetry_overlay(bbox: tuple) -> tuple[bytes, dict]:
                  "colorscale": {"vmin": 0.0, "vmax": round(vmax, 1), "cmap": "cmocean.deep"}}
 
 
-@cachetools.cached(cache=_bathy_cache, lock=_bathy_lock, key=cachetools.keys.hashkey)
+@cachetools.cached(cache=_isobath_cache, lock=_isobath_lock, key=cachetools.keys.hashkey)
 def get_isobaths(bbox: tuple, depths: tuple = (10, 25, 100)) -> dict:
     """Isobath contour lines from CMEMS static bathymetry as GeoJSON FeatureCollection.
 
