@@ -1,6 +1,6 @@
 # Operational Status — BoatOps
 
-> Last updated: 2026-05-03
+> Last updated: 2026-05-11
 
 ## Session Handoff Protocol (MANDATORY)
 
@@ -58,9 +58,12 @@ Phase 4 options (no epic scoped yet):
 1. **FR-16 AI synthesis** — Claude API integration for Go/No-Go reasoning with risk factors and optimal time windows
 2. **AOI draw tool** — FR-01 time picker + user-drawn AOI polygon; passes center/bbox to all API calls
 3. **NFR-01 load test** — multi-user concurrent sessions; currently untested
+4. **Isobath map layer** — `GET /api/map/isobaths` data served but not yet rendered as MapLibre vector line layers in the frontend
+5. **E2E coverage for new features** — Playwright tests for TimeSlider, satellite track toggle, isobath layer, dark basemap, wind m/s display
 
 ## Recently Closed
 
+- 2026-05-11: **Improvements batch ✅** (feature/improvements-may-2026) — dark vector basemap, seamark +20%, isobath API, wind in m/s, wind vmax cap 20 m/s, 7-day time slider, satellite ground tracks + click-to-time
 - 2026-05-03: **Production deployment ✅** — Docker Compose; `docker compose up -d` starts the full stack at port 80
 - 2026-05-03: **Epic 03 ✅ complete** — all 6 Phase 3 frontend stories done (S03-01 through S03-06)
 - 2026-05-03: **Epic 02 ✅ complete** — all 6 Phase 2 backend stories done; 60 tests passing

@@ -92,12 +92,17 @@ def _predict_passes(
 
         aos_dt = aos_t.utc_datetime()
         los_dt = los_t.utc_datetime()
+        track_coords = [
+            [round(float(lon), 4), round(float(lat), 4)]
+            for lon, lat in zip(subpts.longitude.degrees, subpts.latitude.degrees)
+        ]
         passes.append({
             "platform": platform_name,
             "aos_utc": aos_dt.isoformat(),
             "los_utc": los_dt.isoformat(),
             "max_elevation_deg": round(peak_elev, 1),
             "duration_min": round((los_dt - aos_dt).total_seconds() / 60, 1),
+            "track_coords": track_coords,
         })
         i = j + 1
 

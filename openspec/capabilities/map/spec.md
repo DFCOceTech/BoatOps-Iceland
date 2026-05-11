@@ -44,6 +44,21 @@ The system SHALL render CMEMS Baltic BGC surface chlorophyll (`chl` at depth ≈
 ### REQ-MAP-016: Baltic Bottom Oxygen Overlay
 The system SHALL render CMEMS Baltic BGC bottom dissolved oxygen (`o2b`, mmol/m³) as a colour-mapped ImageOverlay. The hypoxia threshold (63 mmol/m³ ≈ 2 mg/L) SHOULD be visually marked in the colour scale.
 
+### REQ-MAP-017: Dark Vector Base Map
+The system SHALL use a free vector tile base map (no API key required) styled with land colour `#090909` (nearly black) and water colour `#1e3278` (dark blue, RGB 30/50/120). The vector base map SHALL replace the OpenStreetMap raster tile layer.
+
+### REQ-MAP-018: Isobath Contour Layers
+The system SHALL render depth contour lines at 10 m, 25 m, and 100 m from CMEMS static bathymetry (`deptho`) as vector line layers on the map. Each depth SHALL have a visually distinct colour. The isobaths SHALL be served from `GET /api/map/isobaths` as a GeoJSON FeatureCollection.
+
+### REQ-MAP-019: Dimmed Base Map Layers
+Land fill layers in the vector base map SHALL be rendered at 0.85 opacity so that oceanographic overlays are visually prominent against the dark background.
+
+### REQ-MAP-020: Seamark Icon Scale
+The OpenSeaMap seamark tile layer SHALL render at 20% larger than the default (tile display size 307 px vs. 256 px) to improve readability at operational zoom levels.
+
+### REQ-MAP-021: Time-Controlled Wind Overlay
+The animated wind particle overlay SHALL accept an optional `hour` parameter (0–167, representing hours from current UTC) so the overlay displays wind conditions for a user-selected planning hour rather than always showing the current hour.
+
 ### REQ-MAP-009: Wind Field Overlay
 The system SHALL render wind speed and direction from the Open-Meteo forecast as a vector-field ImageOverlay covering the AOI bbox, updated for the active planning time. Wind vectors SHALL encode both speed (colour) and direction (arrow).
 
@@ -133,6 +148,16 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 **WHEN** the least-cloud-cover Sentinel-2 L2A mosaic is requested via the SH Process API for the AOI bbox  
 **THEN** the response is HTTP 200 with `image/png` content; the PNG is added as an ImageOverlay; file size > 10 KB
 
+### SCENARIO-MAP-DARK-001: Dark vector base map renders over Baltic AOI
+**GIVEN** the BoatOps web app is loaded  
+**WHEN** the map displays  
+**THEN** land areas render as `#090909` (nearly black) and water areas as `#1e3278` (dark blue); no OpenStreetMap raster tiles are loaded
+
+### SCENARIO-MAP-ISOBATH-001: Isobath vector lines render at 10 / 25 / 100 m
+**GIVEN** `GET /api/map/isobaths` is called for the Baltic AOI bbox  
+**WHEN** the CMEMS `deptho` data is processed  
+**THEN** the response is a GeoJSON FeatureCollection; features with `depth_m = 10`, `25`, and `100` are all present; each geometry is a valid LineString with at least 2 coordinates; the isobath lines render as distinct vector line layers on the map
+
 ## Data Contracts
 
 ### Inputs
@@ -155,7 +180,7 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 - Tile URLs served to frontend map library (MapLibre GL JS)
 - AOI geometry (GeoJSON polygon) stored in session state
 
-## Implementation Status (2026-05-03)
+## Implementation Status (2026-05-11)
 
 **Status**: Implemented (Phase 1 + Phase 2 complete)
 
@@ -175,8 +200,15 @@ The system SHALL provide a toggleable EMODnet Seabed Habitats overlay sourced fr
 - EMODnet layer `eusm2022` no longer exists — service restructured to per-scale/per-classification-scheme layers; using `eusm_helcom_group` (HELCOM Baltic classification, multi-scale group). `_full`-suffix layers render blank at overview zoom
 - REQ-MAP-001 AOI draw, REQ-MAP-005 GeoTIFF upload, and layer toggle UI deferred to Phase 3
 
+### 2026-05-11 Additions (feature/improvements-may-2026)
+- **REQ-MAP-017** ✅ Dark vector basemap — `frontend/src/config/basemapStyle.ts` + `MapView.tsx`; OpenFreeMap tiles; land `#090909`, water `#1e3278`
+- **REQ-MAP-018** ✅ Isobath contour GeoJSON — `cmems.get_isobaths()` (matplotlib contour on `deptho`; 24h cache); `GET /api/map/isobaths` endpoint; `frontend/src/api/client.ts` `getIsobaths()`
+- **REQ-MAP-019** ✅ Dim basemap — `background-opacity: 0.85` applied to land background layer in custom style
+- **REQ-MAP-020** ✅ Seamark icon size +20% — `tileSize: 307` in `frontend/src/config/layers.ts`
+- **REQ-MAP-021** ✅ Time-controlled wind overlay — `openmeteo.get_wind_grid()` accepts optional `hour` (0–167); `GET /api/weather/wind-grid?hour=N`; `WindLayerPanel` refetches on `forecastHour` change
+
 ### Deferred
 - 3D map view (Phase 3 frontend)
 - AOI draw tool (Phase 3 frontend; Phase 2 session state)
 - GeoTIFF upload endpoint (Phase 2 backend; Phase 3 frontend)
-- Layer toggle UI (Phase 3 MapLibre GL JS)
+- Isobath frontend layer toggle in LayerPanel (currently only served via API; no map layer rendered yet — Phase 4)

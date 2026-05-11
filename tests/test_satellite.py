@@ -27,6 +27,7 @@ _FAKE_PASSES = [
         "los_utc": "2026-05-03T06:08:00+00:00",
         "max_elevation_deg": 52.3,
         "duration_min": 8.0,
+        "track_coords": [[12.0, 53.6], [12.5, 54.2], [13.0, 54.8]],
     },
     {
         "platform": "NOAA-20 (VIIRS)",
@@ -34,6 +35,7 @@ _FAKE_PASSES = [
         "los_utc": "2026-05-03T09:38:00+00:00",
         "max_elevation_deg": 34.1,
         "duration_min": 8.2,
+        "track_coords": [[10.0, 53.5], [11.0, 54.5], [12.0, 55.5]],
     },
 ]
 
@@ -80,8 +82,11 @@ def test_overpasses_returns_list(mock_fn):
 def test_overpasses_schema(mock_fn):
     resp = client.get(f"/api/satellite/overpasses?{BBOX_QS}")
     item = resp.json()[0]
-    for key in ("platform", "aos_utc", "los_utc", "max_elevation_deg", "duration_min"):
+    for key in ("platform", "aos_utc", "los_utc", "max_elevation_deg", "duration_min", "track_coords"):
         assert key in item, f"missing key: {key}"
+    assert isinstance(item["track_coords"], list)
+    assert len(item["track_coords"]) >= 2
+    assert len(item["track_coords"][0]) == 2  # [lon, lat]
 
 
 @patch.object(celestrak, "get_overpasses", return_value=_FAKE_PASSES)

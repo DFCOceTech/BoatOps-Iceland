@@ -28,6 +28,12 @@ The system SHALL query the CDSE STAC API for the most recent available Sentinel-
 ### REQ-SAT-006: Sentinel-2 Imagery Display
 The system SHALL stream Sentinel-2 imagery tiles via the CDSE OGC WMS/WMTS service for the selected scene, supporting true color (B4/B3/B2) and false color / NIR (B8/B4/B3) band combinations.
 
+### REQ-SAT-008: Ground Track Overlay on Map
+The system SHALL render the ground track of each predicted overpass as a vector line on the map. Tracks SHALL be grouped by platform with distinct colours. A toggle in the Satellite panel SHALL show or hide all tracks simultaneously.
+
+### REQ-SAT-009: Pass Selection Sets Planning Time
+Clicking a satellite pass row in the overpass table SHALL set the global planning time context to that pass's AOS time. This SHALL cause all time-sensitive panels (weather, waves) to display conditions for that forecast hour.
+
 ### REQ-SAT-007: Imagery Metadata Display
 The system SHALL return image metadata (acquisition date, cloud cover %, scene ID, tile grid reference) for display in the layer panel alongside the imagery.
 
@@ -52,6 +58,11 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 **GIVEN** a very small AOI or high cloud season where no scene meets the threshold  
 **WHEN** the CDSE STAC search returns no results  
 **THEN** the response returns an empty result with `{"status": "no_scene", "message": "No scene found with cloud cover ≤ 20% in the last 90 days"}` — not an error
+
+### SCENARIO-SAT-TRACK-001: Ground track overlay renders for all predicted passes
+**GIVEN** overpasses have been fetched for the Baltic AOI  
+**WHEN** the "Show satellite tracks" toggle is enabled  
+**THEN** ground track LineStrings are drawn on the map, one per pass, colour-coded by platform; tracks intersect the Baltic AOI bbox
 
 ### SCENARIO-SAT-FAIL-001: CDSE unavailable returns structured error
 **GIVEN** CDSE API is unreachable (simulated)  
@@ -102,8 +113,11 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 - Quicklook asset is JPEG (not PNG) — PIL.Image.open() required.
 - REQ-SAT-005 tile coverage filter added: pool of 20 candidates fetched; scenes with footprint area < 50% of full 110×110 km tile are rejected (adapted from Sent2_GreenMac).
 
+### 2026-05-11 Additions (feature/improvements-may-2026)
+- **REQ-SAT-008** ✅ Ground track overlay — `celestrak.py` now returns `track_coords: [[lon, lat], ...]` in each pass dict; `SatellitePanel.tsx` adds GeoJSON LineString layer on map via `addTrackLayer()`; colour-coded by platform; toggle checkbox
+- **REQ-SAT-009** ✅ Pass click → planning time — `handlePassClick` in `SatellitePanel` computes hour offset from AOS and calls `setForecastHour()`; all time-sensitive panels update
+
 ### Deferred
-- VIIRS and Landsat ground track rendering on map (Phase 3 nice-to-have)
 - Sentinel-3 overpass TLE prediction (CDSE OData historical only in notebook)
 - Per-pass midpass solar elevation: `Overpass` schema has no `midpass_solar_elevation_deg` field; frontend uses daytime-pass proxy (AOS between sunrise/sunset) as an approximation
 

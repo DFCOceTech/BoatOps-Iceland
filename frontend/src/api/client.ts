@@ -94,9 +94,10 @@ export interface WindGrid {
   vmax_speed: number
 }
 
-export const getWindGrid = (bbox = AOI) =>
+export const getWindGrid = (bbox = AOI, hour?: number) =>
   fetchJson<WindGrid>(
-    `/api/weather/wind-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
+    `/api/weather/wind-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
+    (hour !== undefined ? `&hour=${hour}` : '')
   )
 
 export const getCurrentsGrid = (bbox = AOI) =>
@@ -146,6 +147,7 @@ export const getSolarElevation = (lat = CENTER.lat, lon = CENTER.lon) =>
 export interface Overpass {
   platform: string; aos_utc: string; los_utc: string
   max_elevation_deg: number; duration_min: number
+  track_coords: [number, number][]  // [[lon, lat], ...] ground track polyline
 }
 
 export const getSatelliteOverpasses = (bbox = AOI, days = 7) =>
@@ -188,6 +190,13 @@ export const getS2Overlay = (bbox = AOI, cloudMax = 20, signal?: AbortSignal) =>
 
 const bboxQs = (bbox = AOI) =>
   `west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
+
+export const getIsobaths = (bbox = AOI) =>
+  fetchJson<{ type: string; features: Array<{
+    type: string
+    geometry: { type: string; coordinates: [number, number][] }
+    properties: { depth_m: number }
+  }> }>(`/api/map/isobaths?${bboxQs(bbox)}`)
 
 export const getBathymetry  = (bbox = AOI) => fetchPng(`/api/map/bathymetry?${bboxQs(bbox)}`)
 export const getSst         = (bbox = AOI) => fetchPng(`/api/map/sst?${bboxQs(bbox)}`)

@@ -21,9 +21,10 @@ def get_wind_grid(
     west: float = 9.5, south: float = 53.5,
     east: float = 15.0, north: float = 56.0,
     step: float = 0.25,
+    hour: int | None = None,
 ):
     try:
-        return openmeteo.get_wind_grid(west, south, east, north, step)
+        return openmeteo.get_wind_grid(west, south, east, north, step, hour)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=502, detail=f"upstream error: {exc.response.status_code}")
     except httpx.HTTPError as exc:

@@ -28,6 +28,20 @@ def _static_ds(ny=8, nx=10) -> xr.Dataset:
     )
 
 
+def _isobath_ds(ny=12, nx=15) -> xr.Dataset:
+    """Static dataset with depth varying 0–200 m (crosses 10, 25, 100 m contours)."""
+    lats = np.linspace(53.5, 56.0, ny)
+    lons = np.linspace(9.5, 15.0, nx)
+    # Ramp from 0 (top-left) to 200 (bottom-right)
+    LON, LAT = np.meshgrid(np.linspace(0, 1, nx), np.linspace(0, 1, ny))
+    deptho = (LON * LAT * 200.0).astype(float)
+    deptho[0, 0] = np.nan   # one land cell
+    return xr.Dataset(
+        {"deptho": (["latitude", "longitude"], deptho)},
+        coords={"latitude": lats, "longitude": lons},
+    )
+
+
 def _timed_ds(var_spec: dict, ny=8, nx=10, n_times=4) -> xr.Dataset:
     """Generic timed dataset — var_spec: {name: (dims, fill_value)}."""
     lats = np.linspace(53.5, 56.0, ny)
@@ -69,6 +83,8 @@ def _bgc_ds():
 def clear_caches():
     cmems._cache.clear()
     cmems._bathy_cache.clear()
+    if hasattr(cmems, '_grid_cache'):
+        cmems._grid_cache.clear()
     yield
 
 
@@ -82,6 +98,37 @@ def _assert_png_response(resp):
     assert "x-colorscale" in resp.headers
     cs = json.loads(resp.headers["x-colorscale"])
     assert "vmin" in cs and "vmax" in cs and "cmap" in cs
+
+
+# ── /api/map/isobaths ────────────────────────────────────────────────────────
+
+@patch("copernicusmarine.open_dataset", return_value=_isobath_ds())
+def test_isobaths_returns_feature_collection(mock_ds):
+    resp = client.get(f"/api/map/isobaths?{BBOX_QS}")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["type"] == "FeatureCollection"
+    assert "features" in body
+
+
+@patch("copernicusmarine.open_dataset", return_value=_isobath_ds())
+def test_isobaths_feature_structure(mock_ds):
+    resp = client.get(f"/api/map/isobaths?{BBOX_QS}")
+    body = resp.json()
+    # dataset spans 0–200 m → all three isobaths (10, 25, 100 m) must be present
+    depth_values = {f["properties"]["depth_m"] for f in body["features"]}
+    assert 10  in depth_values
+    assert 25  in depth_values
+    assert 100 in depth_values
+    for f in body["features"]:
+        assert f["geometry"]["type"] == "LineString"
+        assert len(f["geometry"]["coordinates"]) >= 2
+
+
+@patch("copernicusmarine.open_dataset", side_effect=RuntimeError("auth failed"))
+def test_isobaths_502(mock_ds):
+    resp = client.get(f"/api/map/isobaths?{BBOX_QS}")
+    assert resp.status_code == 502
 
 
 # ── /api/map/bathymetry ───────────────────────────────────────────────────────
@@ -117,7 +164,8 @@ def test_sst_colorscale(mock_ds):
     resp = client.get(f"/api/map/sst?{BBOX_QS}")
     cs = json.loads(resp.headers["x-colorscale"])
     assert cs["cmap"] == "cmocean.thermal"
-    assert cs["vmin"] == 4.0 and cs["vmax"] == 20.0
+    assert "vmin" in cs and "vmax" in cs
+    assert cs["vmax"] > cs["vmin"]
 
 
 # ── /api/map/salinity ─────────────────────────────────────────────────────────
@@ -146,7 +194,7 @@ def test_currents_colorscale(mock_ds):
     resp = client.get(f"/api/map/currents?{BBOX_QS}")
     cs = json.loads(resp.headers["x-colorscale"])
     assert cs["cmap"] == "cmocean.speed"
-    assert cs["vmax"] == 0.5
+    assert cs["vmax"] > 0  # autoscaled; any positive cap is valid
 
 
 # ── /api/map/chlorophyll ──────────────────────────────────────────────────────

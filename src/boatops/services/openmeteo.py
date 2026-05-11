@@ -51,24 +51,22 @@ def get_forecast(lat: float, lon: float) -> dict:
     }
 
 
-@cachetools.cached(cache=_grid_cache, lock=_grid_lock, key=cachetools.keys.hashkey)
-def get_wind_grid(
+@cachetools.cached(cache=_grid_cache, lock=_grid_lock,
+                   key=lambda west, south, east, north, step=0.25: cachetools.keys.hashkey(west, south, east, north, step))
+def _fetch_wind_grid_raw(
     west: float, south: float, east: float, north: float,
     step: float = 0.25,
 ) -> dict:
-    """Fetch U/V wind components on a regular grid using Open-Meteo batch API.
+    """Fetch 7-day U/V wind grid from Open-Meteo (inner cached function).
 
-    Returns a 2D grid shaped [row][col] where row 0 = southernmost latitude,
-    col 0 = westernmost longitude.  U = eastward m/s, V = northward m/s.
-    vmax_speed = sqrt(max(u²+v²)) across the grid — used by the frontend for
-    autoscaling the particle color ramp to the actual data range.
+    Returns raw per-point hourly arrays so that get_wind_grid() can select
+    any forecast hour (0–167) without re-fetching.
     """
     n_lons = round((east - west) / step) + 1
     n_lats = round((north - south) / step) + 1
     lats = [south + i * step for i in range(n_lats)]
     lons = [west  + j * step for j in range(n_lons)]
 
-    # Flatten grid into parallel lat/lon lists for the batch request
     lat_list = [lat for lat in lats for _lon in lons]
     lon_list = [lon for _lat in lats for lon in lons]
 
@@ -78,25 +76,59 @@ def get_wind_grid(
             "latitude":  ",".join(f"{v:.4f}" for v in lat_list),
             "longitude": ",".join(f"{v:.4f}" for v in lon_list),
             "hourly":    "wind_u_component_10m,wind_v_component_10m",
-            "forecast_days": 1,
+            "forecast_days": 7,
             "timezone": "UTC",
         },
         timeout=30,
     )
     resp.raise_for_status()
     data = resp.json()
-    if isinstance(data, dict):   # single point returns dict, multiple returns list
+    if isinstance(data, dict):
         data = [data]
 
-    now_hour = datetime.now(timezone.utc).hour
-    u_flat = [d["hourly"]["wind_u_component_10m"][now_hour] or 0.0 for d in data]
-    v_flat = [d["hourly"]["wind_v_component_10m"][now_hour] or 0.0 for d in data]
+    return {
+        "u_all": [d["hourly"]["wind_u_component_10m"] for d in data],
+        "v_all": [d["hourly"]["wind_v_component_10m"] for d in data],
+        "times": data[0]["hourly"]["time"],
+        "n_lons": n_lons,
+        "n_lats": n_lats,
+        "bbox": [west, south, east, north],
+    }
+
+
+_VMAX_WIND_CAP_MS = 20.0  # physical ceiling for color-scale — prevents hurricane colours dominating
+
+
+def get_wind_grid(
+    west: float, south: float, east: float, north: float,
+    step: float = 0.25,
+    hour: int | None = None,
+) -> dict:
+    """Return wind U/V grid for the requested forecast hour (0–167, default = current UTC hour).
+
+    vmax_speed is capped at 20 m/s so the particle colour ramp covers operationally
+    relevant wind speeds rather than stretching to rare extreme values.
+    """
+    raw = _fetch_wind_grid_raw(west, south, east, north, step)
+    n_lons = raw["n_lons"]
+    n_lats = raw["n_lats"]
+    max_hours = len(raw["times"]) - 1
+
+    if hour is None:
+        hour_idx = datetime.now(timezone.utc).hour
+    else:
+        hour_idx = max(0, min(max_hours, int(hour)))
+
+    u_flat = [u[hour_idx] or 0.0 for u in raw["u_all"]]
+    v_flat = [v[hour_idx] or 0.0 for v in raw["v_all"]]
 
     u_grid = [[u_flat[i * n_lons + j] for j in range(n_lons)] for i in range(n_lats)]
     v_grid = [[v_flat[i * n_lons + j] for j in range(n_lons)] for i in range(n_lats)]
 
     speeds = [math.sqrt(u ** 2 + v ** 2) for u, v in zip(u_flat, v_flat)]
-    vmax_speed = max(speeds) if speeds else 1.0
+    vmax_speed = min(max(speeds) if speeds else 1.0, _VMAX_WIND_CAP_MS)
+
+    timestamp = raw["times"][hour_idx] if hour_idx < len(raw["times"]) else ""
 
     return {
         "u": u_grid,
@@ -104,6 +136,6 @@ def get_wind_grid(
         "width": n_lons,
         "height": n_lats,
         "bbox": [west, south, east, north],
-        "timestamp": datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat(),
+        "timestamp": timestamp,
         "vmax_speed": round(vmax_speed, 3),
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type maplibregl from 'maplibre-gl'
 import { useMapContext } from '../context/MapContext'
+import { useTimeContext } from '../context/TimeContext'
 import { useFetch } from '../hooks/useFetch'
 import { getSatelliteOverpasses, getS2Overlay, getSolarTimes } from '../api/client'
 import type { Overpass } from '../api/client'
@@ -9,8 +10,9 @@ const CENTER = { lat: 54.18, lon: 12.08 }
 const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
 const BERLIN_TZ = 'Europe/Berlin'
 const S2_LAYER_ID = 'api-s2-overlay'
+const TRACK_SOURCE_ID = 'sat-tracks-src'
+const TRACK_LAYER_ID  = 'sat-tracks'
 
-// Python isoformat() emits "+00:00" not "Z"; handle both without appending Z blindly.
 function parseIso(iso: string): Date {
   return (iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso))
     ? new Date(iso)
@@ -42,7 +44,6 @@ function platformColor(platform: string): string {
   return '#94a3b8'
 }
 
-// Group passes by platform, sort each group by AOS, sort groups alphabetically.
 function groupByPlatform(passes: Overpass[]): { platform: string; passes: Overpass[] }[] {
   const map = new Map<string, Overpass[]>()
   for (const p of passes) {
@@ -56,9 +57,6 @@ function groupByPlatform(passes: Overpass[]): { platform: string; passes: Overpa
     .map(([platform, passes]) => ({ platform, passes }))
 }
 
-// Returns true if the pass AOS falls between today's sunrise and sunset.
-// This is a daylight proxy — accurate only for today's passes.
-// Full per-pass solar elevation requires a backend schema change to Overpass.
 function isDaylightPass(aoUtc: string, sunrise: string | null, sunset: string | null): boolean {
   if (!sunrise || !sunset) return false
   const t    = parseIso(aoUtc).getTime()
@@ -67,45 +65,84 @@ function isDaylightPass(aoUtc: string, sunrise: string | null, sunset: string | 
   return t >= rise && t <= set
 }
 
-function addS2Layer(
-  map: maplibregl.Map,
-  blobUrl: string,
-  bbox: [number, number, number, number],
-) {
+// Build a GeoJSON FeatureCollection of all ground tracks
+function buildTracksGeoJSON(passes: Overpass[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: passes
+      .filter(p => p.track_coords && p.track_coords.length >= 2)
+      .map(p => ({
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: p.track_coords },
+        properties: { platform: p.platform, aos_utc: p.aos_utc },
+      })),
+  }
+}
+
+function addS2Layer(map: maplibregl.Map, blobUrl: string, bbox: [number, number, number, number]) {
   const [west, south, east, north] = bbox
   try {
     if (!map.getSource(S2_LAYER_ID)) {
       map.addSource(S2_LAYER_ID, {
-        type: 'image',
-        url: blobUrl,
+        type: 'image', url: blobUrl,
         coordinates: [[west, north], [east, north], [east, south], [west, south]],
       })
     }
     if (!map.getLayer(S2_LAYER_ID)) {
-      map.addLayer({
-        id: S2_LAYER_ID, type: 'raster', source: S2_LAYER_ID,
-        paint: { 'raster-opacity': 0.85 },
-      })
+      map.addLayer({ id: S2_LAYER_ID, type: 'raster', source: S2_LAYER_ID,
+        paint: { 'raster-opacity': 0.85 } })
     }
-  } catch (err) {
-    console.warn('[SatellitePanel] addS2Layer:', err)
-  }
+  } catch (err) { console.warn('[SatellitePanel] addS2Layer:', err) }
 }
 
 function removeS2Layer(map: maplibregl.Map) {
   try {
     if (map.getLayer(S2_LAYER_ID)) map.removeLayer(S2_LAYER_ID)
     if (map.getSource(S2_LAYER_ID)) map.removeSource(S2_LAYER_ID)
-  } catch { /* map may be in teardown */ }
+  } catch { /* teardown */ }
+}
+
+function addTrackLayer(map: maplibregl.Map, passes: Overpass[]) {
+  const geojson = buildTracksGeoJSON(passes)
+  try {
+    if (map.getSource(TRACK_SOURCE_ID)) {
+      (map.getSource(TRACK_SOURCE_ID) as maplibregl.GeoJSONSource).setData(geojson)
+    } else {
+      map.addSource(TRACK_SOURCE_ID, { type: 'geojson', data: geojson })
+    }
+    if (!map.getLayer(TRACK_LAYER_ID)) {
+      map.addLayer({
+        id: TRACK_LAYER_ID, type: 'line', source: TRACK_SOURCE_ID,
+        paint: {
+          'line-color': [
+            'match', ['get', 'platform'],
+            'Sentinel-2A', '#38bdf8', 'Sentinel-2B', '#38bdf8',
+            'Sentinel-3A', '#818cf8', 'Sentinel-3B', '#818cf8',
+            'Landsat 8', '#fb923c', 'Landsat 9', '#f97316',
+            'Suomi-NPP (VIIRS)', '#a78bfa', 'NOAA-20 (VIIRS)', '#c084fc',
+            '#94a3b8',
+          ],
+          'line-width': 1.5,
+          'line-opacity': 0.7,
+        },
+      })
+    } else {
+      map.setLayoutProperty(TRACK_LAYER_ID, 'visibility', 'visible')
+    }
+  } catch (err) { console.warn('[SatellitePanel] addTrackLayer:', err) }
+}
+
+function removeTrackLayer(map: maplibregl.Map) {
+  try {
+    if (map.getLayer(TRACK_LAYER_ID)) map.removeLayer(TRACK_LAYER_ID)
+    if (map.getSource(TRACK_SOURCE_ID)) map.removeSource(TRACK_SOURCE_ID)
+  } catch { /* teardown */ }
 }
 
 interface S2State {
-  visible: boolean
-  loading: boolean
-  error: string | null
+  visible: boolean; loading: boolean; error: string | null
   meta: { sceneId: string; acquisitionTime: string; cloudCoverPct: number | null } | null
 }
-
 const S2_INIT: S2State = { visible: false, loading: false, error: null, meta: null }
 
 const S: Record<string, React.CSSProperties> = {
@@ -124,23 +161,28 @@ const S: Record<string, React.CSSProperties> = {
   overlayRow: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#cbd5e1',
                 cursor: 'pointer', userSelect: 'none', marginTop: 8 },
   checkbox:   { accentColor: '#38bdf8', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 },
-  metaBadge:  { fontSize: 10, padding: '2px 6px', borderRadius: 3, background: '#2d3148',
-                color: '#94a3b8', marginLeft: 6 },
+  metaBadge:  { fontSize: 10, padding: '2px 6px', borderRadius: 3, background: '#2d3148', color: '#94a3b8', marginLeft: 6 },
   card:       { background: '#141621', borderRadius: 6, padding: '10px 12px', marginBottom: 10 },
 }
 
 export default function SatellitePanel() {
   const { map } = useMapContext()
+  const { setForecastHour } = useTimeContext()
   const overpasses = useFetch(() => getSatelliteOverpasses(AOI))
   const solarTimes = useFetch(() => getSolarTimes(CENTER.lat, CENTER.lon))
   const [s2, setS2] = useState<S2State>(S2_INIT)
+  const [tracksVisible, setTracksVisible] = useState(false)
 
   const mountedRef  = useRef(true)
   const abortRef    = useRef<AbortController | null>(null)
   const blobUrlRef  = useRef<string | null>(null)
-  // mapRef allows async callbacks to access the current map without stale closure issues.
   const mapRef      = useRef(map)
   mapRef.current    = map
+
+  // Base time for hour offset calculation (snapped to current UTC hour)
+  const baseMs = useRef((() => {
+    const d = new Date(); d.setUTCMinutes(0, 0, 0); return d.getTime()
+  })())
 
   useEffect(() => {
     mountedRef.current = true
@@ -148,41 +190,55 @@ export default function SatellitePanel() {
       mountedRef.current = false
       abortRef.current?.abort()
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-      if (mapRef.current) removeS2Layer(mapRef.current)
+      const m = mapRef.current
+      if (m) { removeS2Layer(m); removeTrackLayer(m) }
     }
   }, [])
+
+  // Add/remove track layer when toggle changes or data loads
+  useEffect(() => {
+    const m = mapRef.current
+    const passes = overpasses.data
+    if (!m || !passes) return
+
+    const doToggle = () => {
+      if (tracksVisible) {
+        addTrackLayer(m, passes)
+      } else {
+        removeTrackLayer(m)
+      }
+    }
+
+    if (m.isStyleLoaded()) {
+      doToggle()
+    } else {
+      m.once('load', doToggle)
+      return () => { m.off('load', doToggle) }
+    }
+  }, [tracksVisible, overpasses.data])
 
   const toggleS2 = useCallback(async () => {
     if (!mapRef.current) return
 
-    // Turn off if visible or blob cached
     if (s2.visible || blobUrlRef.current) {
       removeS2Layer(mapRef.current)
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current)
-        blobUrlRef.current = null
-      }
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null }
       setS2(S2_INIT)
       return
     }
 
-    // Cancel any previous in-flight fetch
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
-
     setS2(prev => ({ ...prev, loading: true, error: null }))
 
     try {
-      // Pass signal so the HTTP request is cancelled if user toggles off mid-fetch.
       const result = await getS2Overlay(AOI, 20, controller.signal)
       if (controller.signal.aborted || !mountedRef.current) return
 
       const blobUrl = URL.createObjectURL(result.blob)
       blobUrlRef.current = blobUrl
 
-      // Use mapRef.current (not closed-over map) in case the map instance changed
-      // during the 10–30 s fetch window.
       const doAdd = () => {
         if (!mountedRef.current) return
         const currentMap = mapRef.current
@@ -194,24 +250,23 @@ export default function SatellitePanel() {
       else if (m) m.once('load', doAdd)
 
       setS2({
-        visible: true,
-        loading: false,
-        error: null,
-        meta: {
-          sceneId:         result.sceneId,
-          acquisitionTime: result.acquisitionTime,
-          cloudCoverPct:   result.cloudCoverPct,
-        },
+        visible: true, loading: false, error: null,
+        meta: { sceneId: result.sceneId, acquisitionTime: result.acquisitionTime,
+                cloudCoverPct: result.cloudCoverPct },
       })
     } catch (err) {
       if (controller.signal.aborted || !mountedRef.current) return
-      setS2(prev => ({
-        ...prev,
-        loading: false,
-        error: err instanceof Error ? err.message : 'Fetch failed',
-      }))
+      setS2(prev => ({ ...prev, loading: false,
+        error: err instanceof Error ? err.message : 'Fetch failed' }))
     }
-  }, [s2.visible])  // map read via mapRef — no need to list it as dep
+  }, [s2.visible])
+
+  // Click a pass row → set planning time to AOS
+  const handlePassClick = useCallback((p: Overpass) => {
+    const aosMs = parseIso(p.aos_utc).getTime()
+    const hourOffset = Math.max(0, Math.min(167, Math.round((aosMs - baseMs.current) / 3600_000)))
+    setForecastHour(hourOffset)
+  }, [setForecastHour])
 
   const groups = overpasses.data ? groupByPlatform(overpasses.data) : []
   const sunrise = solarTimes.data?.sunrise ?? null
@@ -220,7 +275,11 @@ export default function SatellitePanel() {
   function renderPassRow(p: Overpass, i: number) {
     const daylit = isDaylightPass(p.aos_utc, sunrise, sunset)
     return (
-      <tr key={i} style={{ background: daylit ? '#1a2535' : undefined }}>
+      <tr key={i}
+        style={{ background: daylit ? '#1a2535' : undefined, cursor: 'pointer' }}
+        onClick={() => handlePassClick(p)}
+        title="Click to set planning time to this pass"
+      >
         <td style={S.td}>{toLocalDayTime(p.aos_utc)}</td>
         <td style={{ ...S.td, textAlign: 'center' as const }}>{p.duration_min.toFixed(0)} min</td>
         <td style={{ ...S.td, textAlign: 'center' as const,
@@ -267,13 +326,25 @@ export default function SatellitePanel() {
             </tbody>
           </table>
           <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
-            Sat elev ≥ 20° in green · highlighted = daytime pass (today's sunrise–sunset)
+            Sat elev ≥ 20° in green · highlighted = daytime · click row to set plan time
           </div>
         </div>
       )}
 
-      {/* Sentinel-2 overlay toggle */}
+      {/* Ground track overlay toggle */}
       <label style={S.overlayRow}>
+        <input
+          type="checkbox"
+          style={S.checkbox}
+          checked={tracksVisible}
+          disabled={!overpasses.data || overpasses.loading}
+          onChange={() => setTracksVisible(v => !v)}
+        />
+        Show satellite tracks on map
+      </label>
+
+      {/* Sentinel-2 overlay toggle */}
+      <label style={{ ...S.overlayRow, marginTop: 6 }}>
         <input
           type="checkbox"
           style={S.checkbox}

@@ -26,6 +26,15 @@ The system SHALL fetch active weather advisories and warnings for the AOI from M
 ### REQ-WX-006: Data Freshness
 The system SHALL include a last-updated timestamp for each weather data layer.
 
+### REQ-WX-008: Wind Speed Units — m/s Primary Display
+Wind speed in the frontend SHALL be displayed in m/s as the primary unit. Knot conversion values SHALL still be available in the API response (`wind_speed_kt`) but SHALL NOT be the primary display unit.
+
+### REQ-WX-009: Wind Speed Color Scale Cap
+The animated wind particle overlay color scale SHALL be capped at 20 m/s maximum, regardless of the data `vmax_speed`. This prevents the color ramp from stretching to hurricane-force values that make moderate winds appear calm.
+
+### REQ-WX-010: Planning Time Slider
+A time slider SHALL be displayed below the map viewport, spanning a 7-day planning window with 1-hour resolution (168 steps). Moving the slider SHALL update all time-sensitive data panels (weather, waves, satellite) to display conditions at the selected forecast hour. The current time SHALL be marked as "Now" on the slider. The wind particle overlay SHALL update to show wind conditions at the selected forecast hour.
+
 ### REQ-WX-007: Graceful Failure
 If any weather API call fails, the system SHALL return a structured error response for that layer without affecting other layers.
 
@@ -98,6 +107,11 @@ If any weather API call fails, the system SHALL return a structured error respon
 ### Deviations from Spec
 - REQ-WX-005 (advisory polygons on map): MeteoAlarm Atom feed contains **no polygon geometry** — area described in plain text only. Phase 2 must use DWD WFS or EUMETNET GeoJSON API for polygon overlays. Open task.
 - Open-Meteo returns single-point forecast for a lat/lon (not gridded). Acceptable for Go/No-Go; gridded multi-point deferred to Phase 2.
+
+### 2026-05-11 Additions (feature/improvements-may-2026)
+- **REQ-WX-008** ✅ Wind in m/s — `WeatherPanel.tsx` and `WindLayerPanel.tsx` updated; `windClass` thresholds in m/s; legend shows m/s
+- **REQ-WX-009** ✅ Wind vmax cap — `openmeteo._VMAX_WIND_CAP_MS = 20.0`; `get_wind_grid` applies `min(vmax, 20.0)`
+- **REQ-WX-010** ✅ Planning time slider — `TimeContext.tsx` (forecastHour state 0–167); `TimeSlider.tsx` (7-day range input, day labels); `WeatherPanel` uses `forecastHour` to index forecast arrays; `WindLayerPanel` refetches with `?hour=N`
 
 ### Deferred
 - REQ-WX-005 polygon overlay: DWD WFS / EUMETNET GeoJSON investigation (Phase 2)

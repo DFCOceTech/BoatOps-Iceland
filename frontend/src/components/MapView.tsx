@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useMapContext } from '../context/MapContext'
+import { DARK_BASEMAP_STYLE } from '../config/basemapStyle'
 
 const BALTIC_CENTER: [number, number] = [12.08, 54.18]  // [lon, lat]
 const INITIAL_ZOOM = 8
@@ -15,19 +16,7 @@ export default function MapView() {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxzoom: 19,
-          },
-        },
-        layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-      },
+      style: DARK_BASEMAP_STYLE,
       center: BALTIC_CENTER,
       zoom: INITIAL_ZOOM,
     })

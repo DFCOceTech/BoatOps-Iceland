@@ -22,8 +22,9 @@ export const BASE_LAYER_DEFS: RasterLayerDef[] = [
     defaultVisible: true,
     source: {
       type: 'raster',
+      // tileSize 307 (≈ 256 × 1.2) renders tiles ~20% larger, scaling up seamark icons
       tiles: ['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png'],
-      tileSize: 256,
+      tileSize: 307,
       attribution: '© <a href="https://www.openseamap.org">OpenSeaMap</a> contributors',
       maxzoom: 18,
     },

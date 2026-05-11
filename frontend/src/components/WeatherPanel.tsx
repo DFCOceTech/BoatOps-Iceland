@@ -6,11 +6,10 @@ import {
 import { useFetch } from '../hooks/useFetch'
 import { getWeatherForecast, getWeatherAdvisories } from '../api/client'
 import { useGoNoGo } from '../context/GoNoGoContext'
+import { useTimeContext } from '../context/TimeContext'
 
 const CENTER = { lat: 54.18, lon: 12.08 }
 
-// Wind direction: 0 = from North, 90 = from East (meteorological convention).
-// Arrow tip points toward the wind's origin direction.
 function WindArrow({ degrees }: { degrees: number }) {
   const rad = (degrees * Math.PI) / 180
   const tx = Math.sin(rad) * 8
@@ -20,7 +19,6 @@ function WindArrow({ degrees }: { degrees: number }) {
       <circle r={10} fill="none" stroke="#2d3148" strokeWidth={1.5} />
       <line x1={0} y1={0} x2={tx} y2={ty}
         stroke="#38bdf8" strokeWidth={2.5} strokeLinecap="round" />
-      {/* arrowhead */}
       <circle cx={tx} cy={ty} r={1.8} fill="#38bdf8" />
     </svg>
   )
@@ -33,9 +31,10 @@ function formatXLabel(isoTime: string): string {
   return `${h.toString().padStart(2, '0')}h`
 }
 
-function windClass(kt: number): string {
-  if (kt <= 15) return '#22c55e'
-  if (kt <= 25) return '#f59e0b'
+// Thresholds in m/s: Bft 4 ≈ 7.9 m/s (caution), Bft 6 ≈ 12.5 m/s (no-go)
+function windClass(ms: number): string {
+  if (ms <= 8)  return '#22c55e'
+  if (ms <= 13) return '#f59e0b'
   return '#ef4444'
 }
 
@@ -56,47 +55,54 @@ const S: Record<string, React.CSSProperties> = {
                 fontSize: 13, padding: 0, float: 'right' },
   badge:      { fontSize: 10, padding: '1px 5px', borderRadius: 3, background: '#2d3148',
                 color: '#64748b', float: 'right', marginTop: 2 },
+  timeBadge:  { fontSize: 10, padding: '1px 6px', borderRadius: 3, background: '#1a2035',
+                color: '#38bdf8', marginLeft: 6, verticalAlign: 'middle' },
 }
 
 export default function WeatherPanel() {
   const forecast = useFetch(() => getWeatherForecast(CENTER.lat, CENTER.lon))
   const advisories = useFetch(() => getWeatherAdvisories('DE'))
   const { update, refreshSignal } = useGoNoGo()
+  const { forecastHour } = useTimeContext()
 
-  // Push current conditions to Go/No-Go context when data loads
   const cur = forecast.data
+
+  // Push conditions at selected hour to Go/No-Go context
   useEffect(() => {
     if (!cur) return
+    const h = Math.min(forecastHour, cur.wind_speed_ms.length - 1)
     update({
-      windKt:   cur.wind_speed_kt[0],
-      gustKt:   cur.gust_speed_kt[0],
-      cloudPct: cur.cloud_cover_pct[0],
+      windKt:   cur.wind_speed_kt[h],
+      gustKt:   cur.gust_speed_kt[h],
+      cloudPct: cur.cloud_cover_pct[h],
     })
-  }, [cur, update])
+  }, [cur, forecastHour, update])
 
-  // Refresh when dashboard "↻" is clicked (signal starts at 0; skip initial mount)
   useEffect(() => {
     if (refreshSignal === 0) return
     forecast.refetch()
     advisories.refetch()
   }, [refreshSignal]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const h = cur ? Math.min(forecastHour, cur.wind_speed_ms.length - 1) : 0
   const current = cur ? {
-    wind_kt:   cur.wind_speed_kt[0],
-    wind_dir:  cur.wind_dir_deg[0],
-    gust_kt:   cur.gust_speed_kt[0],
-    temp_c:    cur.temperature_c[0],
-    cloud_pct: cur.cloud_cover_pct[0],
-    precip_mm: cur.precipitation_mm[0],
+    wind_ms:   cur.wind_speed_ms[h],
+    wind_dir:  cur.wind_dir_deg[h],
+    gust_ms:   cur.gust_speed_ms[h],
+    temp_c:    cur.temperature_c[h],
+    cloud_pct: cur.cloud_cover_pct[h],
+    precip_mm: cur.precipitation_mm[h],
+    time:      cur.times[h],
   } : null
 
-  // Chart data: thin to every 6 hours for readability
+  // Chart: thin to every 6 hours for readability
   const chartData = useMemo(() => {
     if (!cur) return []
     return cur.times
       .map((t, i) => ({
         time: formatXLabel(t),
-        wind:  Math.round(cur.wind_speed_kt[i] ?? 0),
-        gust:  Math.round(cur.gust_speed_kt[i] ?? 0),
+        wind:  parseFloat((cur.wind_speed_ms[i] ?? 0).toFixed(1)),
+        gust:  parseFloat((cur.gust_speed_ms[i] ?? 0).toFixed(1)),
         cloud: Math.round(cur.cloud_cover_pct[i] ?? 0),
       }))
       .filter((_, i) => i % 6 === 0)
@@ -121,17 +127,24 @@ export default function WeatherPanel() {
         <p style={{ color: '#64748b', fontSize: 12 }}>Loading…</p>
       )}
 
-      {/* Current conditions card */}
       {current && (
         <div style={S.card}>
+          {forecastHour > 0 && (
+            <div style={{ fontSize: 10, color: '#38bdf8', marginBottom: 6 }}>
+              {new Date(current.time + 'Z').toLocaleString('en-GB', {
+                weekday: 'short', month: 'short', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+              })} UTC
+            </div>
+          )}
           <div style={S.cardRow}>
             <WindArrow degrees={current.wind_dir} />
-            <span style={{ ...S.bigVal, color: windClass(current.wind_kt) }}>
-              {current.wind_kt.toFixed(1)}
+            <span style={{ ...S.bigVal, color: windClass(current.wind_ms) }}>
+              {current.wind_ms.toFixed(1)}
             </span>
-            <span style={S.unit}>kt</span>
+            <span style={S.unit}>m/s</span>
             <span style={{ fontSize: 12, color: '#64748b', marginLeft: 4 }}>
-              gusts {current.gust_kt.toFixed(1)} kt
+              gusts {current.gust_ms.toFixed(1)} m/s
             </span>
           </div>
           <div style={S.metaGrid}>
@@ -147,7 +160,6 @@ export default function WeatherPanel() {
         </div>
       )}
 
-      {/* 7-day forecast chart */}
       {chartData.length > 0 && (
         <>
           <p style={S.subHead}>
@@ -159,27 +171,27 @@ export default function WeatherPanel() {
           <ResponsiveContainer width="100%" height={130}>
             <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
               <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#64748b' }} interval={3} />
-              <YAxis yAxisId="w" domain={[0, 'auto']} tick={{ fontSize: 9, fill: '#64748b' }} />
+              <YAxis yAxisId="w" domain={[0, 25]} tick={{ fontSize: 9, fill: '#64748b' }} />
               <YAxis yAxisId="c" orientation="right" domain={[0, 100]}
                 tick={{ fontSize: 9, fill: '#475569' }} />
               <Tooltip
                 contentStyle={{ background: '#141621', border: '1px solid #2d3148',
                   fontSize: 11, color: '#cbd5e1' }}
                 labelStyle={{ color: '#94a3b8' }}
+                formatter={(val, name) => [
+                  name === 'Cloud %' ? `${val}%` : `${val} m/s`, name
+                ]}
               />
-              {/* Cloud cover — grey fill on right axis */}
               <Area yAxisId="c" dataKey="cloud" fill="#334155" stroke="none"
                 opacity={0.5} name="Cloud %" />
-              {/* Gust fill behind wind line */}
               <Area yAxisId="w" dataKey="gust" fill="#38bdf8" stroke="none"
-                opacity={0.12} name="Gusts (kt)" />
-              {/* Wind speed line */}
+                opacity={0.12} name="Gusts (m/s)" />
               <Line yAxisId="w" dataKey="wind" stroke="#38bdf8" dot={false}
-                strokeWidth={2} name="Wind (kt)" />
-              {/* Go/No-Go thresholds */}
-              <ReferenceLine yAxisId="w" y={15} stroke="#f59e0b"
+                strokeWidth={2} name="Wind (m/s)" />
+              {/* Bft 4 ≈ 7.9 m/s (caution), Bft 6 ≈ 12.5 m/s (no-go) */}
+              <ReferenceLine yAxisId="w" y={8}  stroke="#f59e0b"
                 strokeDasharray="4 3" strokeWidth={1} />
-              <ReferenceLine yAxisId="w" y={25} stroke="#ef4444"
+              <ReferenceLine yAxisId="w" y={13} stroke="#ef4444"
                 strokeDasharray="4 3" strokeWidth={1} />
             </ComposedChart>
           </ResponsiveContainer>

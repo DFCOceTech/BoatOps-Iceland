@@ -15,6 +15,7 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def clear_caches():
     openmeteo._cache.clear()
+    openmeteo._grid_cache.clear()
     meteoalarm._cache.clear()
     yield
 
@@ -148,3 +149,49 @@ def test_advisories_empty_feed():
         resp = client.get("/api/weather/advisories?country=DE")
     assert resp.status_code == 200
     assert resp.json()["features"] == []
+
+
+# ── wind-grid tests ───────────────────────────────────────────────────────────
+
+def _wind_grid_mock(n_points: int, n_hours: int = 168):
+    """Batch response: list of dicts, one per grid point."""
+    times = [f"2026-05-01T{h % 24:02d}:00" for h in range(n_hours)]
+    single = {
+        "hourly": {
+            "time": times,
+            "wind_u_component_10m": [3.0] * n_hours,
+            "wind_v_component_10m": [4.0] * n_hours,  # speed = 5 m/s
+        },
+    }
+    mock = MagicMock(spec=httpx.Response)
+    mock.raise_for_status.return_value = None
+    mock.json.return_value = [single] * n_points
+    return mock
+
+
+# Small bbox: west=9.5, south=53.5, east=10.0, north=54.0, step=0.5 → 2×2 = 4 points
+_SMALL_GRID_QS = "west=9.5&south=53.5&east=10.0&north=54.0&step=0.5"
+
+
+@patch("httpx.get", return_value=_wind_grid_mock(n_points=4))
+def test_wind_grid_structure(mock_get):
+    resp = client.get(f"/api/weather/wind-grid?{_SMALL_GRID_QS}")
+    assert resp.status_code == 200
+    body = resp.json()
+    for key in ("u", "v", "width", "height", "bbox", "timestamp", "vmax_speed"):
+        assert key in body, f"missing key: {key}"
+
+
+@patch("httpx.get", return_value=_wind_grid_mock(n_points=4))
+def test_wind_grid_vmax_capped(mock_get):
+    """vmax_speed must not exceed 20 m/s regardless of data values."""
+    resp = client.get(f"/api/weather/wind-grid?{_SMALL_GRID_QS}")
+    assert resp.json()["vmax_speed"] <= 20.0
+
+
+@patch("httpx.get", return_value=_wind_grid_mock(n_points=4))
+def test_wind_grid_hour_param(mock_get):
+    """hour param is accepted and returns a valid response."""
+    resp = client.get(f"/api/weather/wind-grid?{_SMALL_GRID_QS}&hour=12")
+    assert resp.status_code == 200
+    assert "timestamp" in resp.json()

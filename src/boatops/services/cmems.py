@@ -137,6 +137,68 @@ def get_bathymetry_overlay(bbox: tuple) -> tuple[bytes, dict]:
                  "colorscale": {"vmin": 0.0, "vmax": round(vmax, 1), "cmap": "cmocean.deep"}}
 
 
+@cachetools.cached(cache=_bathy_cache, lock=_bathy_lock, key=cachetools.keys.hashkey)
+def get_isobaths(bbox: tuple, depths: tuple = (10, 25, 100)) -> dict:
+    """Isobath contour lines from CMEMS static bathymetry as GeoJSON FeatureCollection.
+
+    Each feature is a LineString with property ``depth_m`` (int).
+    Cached for 24 h alongside bathymetry overlay (static data).
+    """
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+    from matplotlib.path import Path as MplPath
+
+    west, south, east, north = bbox
+    pad = 0.2
+    ds = copernicusmarine.open_dataset(
+        dataset_id=STATIC_DATASET,
+        variables=["deptho"],
+        minimum_longitude=west - pad,
+        maximum_longitude=east + pad,
+        minimum_latitude=south - pad,
+        maximum_latitude=north + pad,
+    )
+    depth = ds["deptho"].values.astype(float)
+    lons = ds.longitude.values
+    lats = ds.latitude.values
+    LON2D, LAT2D = np.meshgrid(lons, lats)
+
+    def _geom(verts: np.ndarray, d: int) -> dict:
+        return {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [[round(float(x), 4), round(float(y), 4)] for x, y in verts],
+            },
+            "properties": {"depth_m": d},
+        }
+
+    features = []
+    for d in depths:
+        fig = Figure()
+        FigureCanvasAgg(fig)
+        ax = fig.add_subplot(111)
+        cs = ax.contour(LON2D, LAT2D, depth, levels=[float(d)])
+        for path in cs.get_paths():
+            verts = path.vertices
+            codes = path.codes
+            if codes is None:
+                if len(verts) >= 2:
+                    features.append(_geom(verts, int(d)))
+                continue
+            # Split path at MOVETO codes — each MOVETO starts a new segment
+            start = None
+            for i, code in enumerate(codes):
+                if code == MplPath.MOVETO:
+                    if start is not None and i > start + 1:
+                        features.append(_geom(verts[start:i], int(d)))
+                    start = i
+            if start is not None and len(verts) > start + 1:
+                features.append(_geom(verts[start:], int(d)))
+
+    return {"type": "FeatureCollection", "features": features}
+
+
 @cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
 def get_sst_overlay(bbox: tuple) -> tuple[bytes, dict]:
     """SST L4 (°C) — DMI NRT product, autoscaled to actual data range."""

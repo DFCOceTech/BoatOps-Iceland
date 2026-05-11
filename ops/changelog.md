@@ -2,6 +2,20 @@
 
 Rolling 2-week work log. Remove entries older than 2 weeks.
 
+## 2026-05-11
+
+**Improvements batch — feature/improvements-may-2026** (triggered by improvements.md)
+
+- **Dark vector basemap**: replaced OSM raster tiles with OpenFreeMap vector tiles (no API key). Custom `DARK_BASEMAP_STYLE` (`basemapStyle.ts`) sets land `#090909`, water `#1e3278`, dim borders, minimal city labels. `background-opacity: 0.85` dims land layers per REQ-MAP-019.
+- **Seamark icon size +20%**: `tileSize: 307` (256 × 1.2) in `layers.ts` for the OpenSeaMap raster source.
+- **Isobath vector lines (10/25/100 m)**: `cmems.get_isobaths()` fetches CMEMS static `deptho`, runs `matplotlib.contour` at three depth levels, returns GeoJSON FeatureCollection. `GET /api/map/isobaths` endpoint added. `getIsobaths()` in `client.ts`.
+- **Wind in m/s**: `WeatherPanel.tsx` and `WindLayerPanel.tsx` now display m/s; `windClass` thresholds updated (8/13 m/s for Bft 4/6); chart Y-axis domain capped at 25 m/s; reference lines at 8 and 13 m/s.
+- **Wind vmax cap**: `openmeteo._VMAX_WIND_CAP_MS = 20.0`; `get_wind_grid()` applies `min(vmax, 20.0)`. Factored raw grid fetch into cached `_fetch_wind_grid_raw()` (7-day, shared across all `hour` requests).
+- **7-day planning time slider**: `TimeContext.tsx` (global `forecastHour` 0–167); `TimeSlider.tsx` (range input, day-boundary labels, "Now" reset button, active-day highlight); `WeatherPanel` indexes into forecast arrays using `forecastHour`; `WindLayerPanel` refetches with `?hour=N` on slider change.
+- **Satellite ground tracks + click-to-time**: `celestrak.py` now includes `track_coords: [[lon, lat], ...]` in each pass dict. `SatellitePanel.tsx` adds a "Show satellite tracks" toggle that renders a MapLibre GeoJSON line layer (colour-coded by platform). Clicking a pass row in the overpass table calls `setForecastHour()` with that pass's AOS hour offset.
+- **README.md created**: covers quick start, capabilities, map layers, data sources, planning time slider, satellite tracks, architecture, roadmap.
+- **Tests**: 3 new isobath tests, 3 new wind-grid tests (including vmax cap and hour param); `test_overpasses_schema` extended to assert `track_coords`; colorscale tests updated to data-agnostic assertions. All 66 tests pass.
+
 ## 2026-05-05
 
 **Animated surface-currents overlay**

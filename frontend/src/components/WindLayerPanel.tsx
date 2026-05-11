@@ -15,15 +15,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type maplibregl from 'maplibre-gl'
 import { useMapContext } from '../context/MapContext'
+import { useTimeContext } from '../context/TimeContext'
 import { getWindGrid } from '../api/client'
 import type { WindGrid } from '../api/client'
 
 const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
 const PARTICLE_COUNT  = 600
-const TARGET_PX_PER_S = 150   // target screen pixels/sec at max wind speed (zoom-invariant)
-const MIN_SPEED_FRAC  = 0.25  // slowest particles move at 25% of max visual speed
-const FADE_ALPHA      = 0.035 // applied via destination-out each frame; controls trail length
-const MS_TO_KT        = 1.944
+const TARGET_PX_PER_S = 150
+const MIN_SPEED_FRAC  = 0.25
+const FADE_ALPHA      = 0.035
 
 // ── Wind field helpers ────────────────────────────────────────────────────────
 
@@ -126,20 +126,17 @@ const S: Record<string, React.CSSProperties> = {
   meta:       { fontSize: 11, color: '#475569', marginTop: 6, paddingLeft: 23 },
 }
 
-// Gradient legend bar
 function WindLegend({ vmaxSpeed }: { vmaxSpeed: number }) {
-  const vmaxKt = (vmaxSpeed * MS_TO_KT).toFixed(0)
-  const midKt  = (vmaxSpeed * MS_TO_KT * 0.5).toFixed(0)
-  // CSS gradient to match the HSL ramp
+  const midMs = (vmaxSpeed * 0.5).toFixed(0)
   const grad = 'linear-gradient(to right, hsl(240,90%,45%), hsl(180,90%,52%), hsl(60,90%,52%), hsl(0,90%,52%)'
   return (
     <div style={{ paddingLeft: 23, marginTop: 6 }}>
       <div style={{ height: 6, borderRadius: 3, background: grad }} />
       <div style={{ display: 'flex', justifyContent: 'space-between',
         fontSize: 10, color: '#475569', marginTop: 2 }}>
-        <span>0 kt</span>
-        <span>{midKt} kt</span>
-        <span>{vmaxKt} kt</span>
+        <span>0 m/s</span>
+        <span>{midMs} m/s</span>
+        <span>{vmaxSpeed.toFixed(0)} m/s</span>
       </div>
     </div>
   )
@@ -149,6 +146,7 @@ function WindLegend({ vmaxSpeed }: { vmaxSpeed: number }) {
 
 export default function WindLayerPanel() {
   const { map } = useMapContext()
+  const { forecastHour } = useTimeContext()
   const [visible,  setVisible]  = useState(false)
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState<string | null>(null)
@@ -162,11 +160,11 @@ export default function WindLayerPanel() {
   gridRef.current = grid
   mapRef.current  = map
 
-  const fetchGrid = useCallback(async () => {
+  const fetchGrid = useCallback(async (hour?: number) => {
     setLoading(true)
     setError(null)
     try {
-      setGrid(await getWindGrid(AOI))
+      setGrid(await getWindGrid(AOI, hour))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'fetch failed')
     } finally {
@@ -174,14 +172,19 @@ export default function WindLayerPanel() {
     }
   }, [])
 
+  // Refetch when the planning hour changes (only if overlay is already visible)
+  useEffect(() => {
+    if (visible) fetchGrid(forecastHour)
+  }, [forecastHour]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggle = useCallback(() => {
     if (visible) {
       setVisible(false)
     } else {
-      if (!grid) fetchGrid()
+      if (!grid) fetchGrid(forecastHour)
       setVisible(true)
     }
-  }, [visible, grid, fetchGrid])
+  }, [visible, grid, forecastHour, fetchGrid])
 
   // Spawn / manage the canvas overlay while visible + grid is ready
   useEffect(() => {
@@ -258,14 +261,12 @@ export default function WindLayerPanel() {
     }
   }, [visible, grid])  // re-run when grid loads or visibility changes
 
-  const vmaxKt = grid ? (grid.vmax_speed * MS_TO_KT).toFixed(1) : null
-
   return (
     <section style={S.section}>
       <p style={S.heading}>
         Wind
         {grid && (
-          <button style={S.refBtn} onClick={fetchGrid} title="Refresh wind grid">↻</button>
+          <button style={S.refBtn} onClick={() => fetchGrid(forecastHour)} title="Refresh wind grid">↻</button>
         )}
       </p>
 
@@ -287,7 +288,7 @@ export default function WindLayerPanel() {
         <>
           <WindLegend vmaxSpeed={grid.vmax_speed} />
           <p style={S.meta}>
-            Max {vmaxKt} kt · {grid.timestamp.slice(0, 16).replace('T', ' ')} UTC
+            Max {grid.vmax_speed.toFixed(1)} m/s · {grid.timestamp.slice(0, 16).replace('T', ' ')} UTC
           </p>
         </>
       )}
