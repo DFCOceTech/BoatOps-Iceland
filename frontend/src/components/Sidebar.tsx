@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import LayerPanel from './LayerPanel'
 import IsobathLayer from './IsobathLayer'
+import GbifLayer from './GbifLayer'
 import OceanLayerPanel from './OceanLayerPanel'
 import WindLayerPanel from './WindLayerPanel'
 import CurrentsLayerPanel from './CurrentsLayerPanel'
@@ -72,6 +73,27 @@ export default function Sidebar() {
             <GoNoDashboard />
             <LayerPanel />
             <IsobathLayer />
+
+            {/* Biological occurrence layers (GBIF, field observations only) */}
+            <section style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                color: '#64748b', textTransform: 'uppercase', margin: '0 0 6px' }}>
+                Biological Layers
+              </p>
+              <GbifLayer
+                taxonKey={2863967}
+                label="Zostera marina (seagrass)"
+                color="#22d3ee"
+                gbifUrl="https://www.gbif.org/species/2863967"
+              />
+              <GbifLayer
+                taxonKey={8222574}
+                label="Fucus vesiculosus (macroalgae)"
+                color="#fb923c"
+                gbifUrl="https://www.gbif.org/species/8222574"
+              />
+            </section>
+
             <WindLayerPanel />
             <CurrentsLayerPanel />
             <OceanLayerPanel />

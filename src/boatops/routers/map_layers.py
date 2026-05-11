@@ -60,25 +60,65 @@ def get_currents_grid(
         raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
 
 
-@router.get("/gbif-tiles/{z}/{x}/{y}.png", response_class=Response)
-def gbif_tile_proxy(z: int, x: int, y: int,
-                    taxon_key: int, style: str = "classic.point",
-                    bin: str | None = None, hex_per_tile: int = 10):
-    """Proxy GBIF occurrence density tiles to avoid browser URL-encoding of @1x.png."""
+
+@router.get("/gbif-occurrences")
+def get_gbif_occurrences(
+    taxon_key: int,
+    west: float = 9.5, south: float = 53.5,
+    east: float = 15.0, north: float = 56.0,
+    limit: int = 500,
+):
+    """Fetch GBIF occurrence records as GeoJSON FeatureCollection.
+
+    Filters to field observations with valid coordinates and no flagged spatial
+    issues — this significantly reduces records placed on land due to imprecise
+    herbarium/museum specimen coordinates.
+    """
     import httpx as _httpx
-    params: dict = {"taxonKey": taxon_key, "style": style}
-    if bin:
-        params["bin"] = bin
-        params["hexPerTile"] = hex_per_tile
-    url = f"https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png"
     try:
-        r = _httpx.get(url, params=params, timeout=10,
-                       headers={"User-Agent": "BoatOps/1.0 (+https://github.com/DFCOceTech)"})
-        r.raise_for_status()
+        resp = _httpx.get(
+            "https://api.gbif.org/v1/occurrence/search",
+            params={
+                "taxonKey": taxon_key,
+                "decimalLongitude": f"{west},{east}",
+                "decimalLatitude": f"{south},{north}",
+                "hasGeospatialIssue": "false",
+                "hasCoordinate": "true",
+                "basisOfRecord": "HUMAN_OBSERVATION,MACHINE_OBSERVATION",
+                "limit": min(limit, 500),
+            },
+            timeout=20,
+            headers={"User-Agent": "BoatOps/1.0"},
+        )
+        resp.raise_for_status()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"GBIF tile error: {exc}")
-    return Response(content=r.content, media_type="image/png",
-                    headers={"Cache-Control": "public, max-age=86400"})
+        raise HTTPException(status_code=502, detail=f"GBIF error: {exc}")
+
+    data = resp.json()
+    features = []
+    for r in data.get("results", []):
+        lon = r.get("decimalLongitude")
+        lat = r.get("decimalLatitude")
+        if lon is None or lat is None:
+            continue
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [lon, lat]},
+            "properties": {
+                "species":       r.get("species", ""),
+                "date":          r.get("eventDate", ""),
+                "recorded_by":   r.get("recordedBy", ""),
+                "institution":   r.get("institutionCode", ""),
+                "uncertainty_m": r.get("coordinateUncertaintyInMeters"),
+                "dataset":       r.get("datasetName", ""),
+            },
+        })
+    return {
+        "type": "FeatureCollection",
+        "features": features,
+        "total_gbif": data.get("count", 0),
+        "returned": len(features),
+    }
 
 
 @router.get("/isobaths")
