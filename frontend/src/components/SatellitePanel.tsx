@@ -9,9 +9,11 @@ import type { Overpass } from '../api/client'
 const CENTER = { lat: 54.18, lon: 12.08 }
 const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
 const BERLIN_TZ = 'Europe/Berlin'
-const S2_LAYER_ID = 'api-s2-overlay'
-const TRACK_SOURCE_ID = 'sat-tracks-src'
-const TRACK_LAYER_ID  = 'sat-tracks'
+const S2_LAYER_ID       = 'api-s2-overlay'
+const TRACK_SOURCE_ID   = 'sat-tracks-src'
+const TRACK_LAYER_ID    = 'sat-tracks'
+const HL_SOURCE_ID      = 'sat-track-hl-src'
+const HL_LAYER_ID       = 'sat-track-hl'
 
 function parseIso(iso: string): Date {
   return (iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso))
@@ -21,20 +23,15 @@ function parseIso(iso: string): Date {
 
 function toLocalDayTime(isoUtc: string): string {
   const d = parseIso(isoUtc)
-  const day = new Intl.DateTimeFormat('en-GB', { timeZone: BERLIN_TZ, weekday: 'short' }).format(d)
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone: BERLIN_TZ, hour: '2-digit', minute: '2-digit',
-  }).format(d)
+  const day  = new Intl.DateTimeFormat('en-GB', { timeZone: BERLIN_TZ, weekday: 'short' }).format(d)
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: BERLIN_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
   return `${day} ${time}`
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
-  'Sentinel-2': '#38bdf8',
-  'Sentinel-3': '#818cf8',
-  'SNPP':       '#a78bfa',
-  'NOAA-20':    '#c084fc',
-  'Landsat-8':  '#fb923c',
-  'Landsat-9':  '#f97316',
+  'Sentinel-2': '#38bdf8', 'Sentinel-3': '#818cf8',
+  'SNPP': '#a78bfa', 'NOAA-20': '#c084fc',
+  'Landsat-8': '#fb923c', 'Landsat-9': '#f97316',
 }
 
 function platformColor(platform: string): string {
@@ -65,12 +62,11 @@ function isDaylightPass(aoUtc: string, sunrise: string | null, sunset: string | 
   return t >= rise && t <= set
 }
 
-// Build a GeoJSON FeatureCollection of all ground tracks
 function buildTracksGeoJSON(passes: Overpass[]) {
   return {
     type: 'FeatureCollection' as const,
     features: passes
-      .filter(p => p.track_coords && p.track_coords.length >= 2)
+      .filter(p => p.track_coords?.length >= 2)
       .map(p => ({
         type: 'Feature' as const,
         geometry: { type: 'LineString' as const, coordinates: p.track_coords },
@@ -78,6 +74,78 @@ function buildTracksGeoJSON(passes: Overpass[]) {
       })),
   }
 }
+
+function buildHighlightGeoJSON(pass: Overpass) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: [{
+      type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: pass.track_coords },
+      properties: { platform: pass.platform },
+    }],
+  }
+}
+
+// ── MapLibre helpers ──────────────────────────────────────────────────────────
+
+function ensureTrackLayer(map: maplibregl.Map, passes: Overpass[]) {
+  const geojson = buildTracksGeoJSON(passes)
+  if (map.getSource(TRACK_SOURCE_ID)) {
+    (map.getSource(TRACK_SOURCE_ID) as maplibregl.GeoJSONSource).setData(geojson)
+  } else {
+    map.addSource(TRACK_SOURCE_ID, { type: 'geojson', data: geojson })
+  }
+  if (!map.getLayer(TRACK_LAYER_ID)) {
+    map.addLayer({
+      id: TRACK_LAYER_ID, type: 'line', source: TRACK_SOURCE_ID,
+      paint: {
+        'line-color': [
+          'match', ['get', 'platform'],
+          'Sentinel-2A', '#38bdf8', 'Sentinel-2B', '#38bdf8',
+          'Sentinel-3A', '#818cf8', 'Sentinel-3B', '#818cf8',
+          'Landsat 8', '#fb923c', 'Landsat 9', '#f97316',
+          'Suomi-NPP (VIIRS)', '#a78bfa', 'NOAA-20 (VIIRS)', '#c084fc',
+          '#94a3b8',
+        ],
+        'line-width': 1.5,
+        'line-opacity': 0.45,
+      },
+    })
+  } else {
+    map.setLayoutProperty(TRACK_LAYER_ID, 'visibility', 'visible')
+  }
+}
+
+function ensureHighlightLayer(map: maplibregl.Map, pass: Overpass) {
+  const geojson = buildHighlightGeoJSON(pass)
+  if (map.getSource(HL_SOURCE_ID)) {
+    (map.getSource(HL_SOURCE_ID) as maplibregl.GeoJSONSource).setData(geojson)
+    if (map.getLayer(HL_LAYER_ID)) map.setLayoutProperty(HL_LAYER_ID, 'visibility', 'visible')
+  } else {
+    map.addSource(HL_SOURCE_ID, { type: 'geojson', data: geojson })
+    map.addLayer({
+      id: HL_LAYER_ID, type: 'line', source: HL_SOURCE_ID,
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 3,
+        'line-opacity': 0.9,
+      },
+    })
+  }
+}
+
+function removeLayer(map: maplibregl.Map, layerId: string, sourceId: string) {
+  try {
+    if (map.getLayer(layerId))  map.removeLayer(layerId)
+    if (map.getSource(sourceId)) map.removeSource(sourceId)
+  } catch { /* teardown */ }
+}
+
+function hideLayer(map: maplibregl.Map, layerId: string) {
+  try { if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'none') } catch {}
+}
+
+// ── S2 helpers ────────────────────────────────────────────────────────────────
 
 function addS2Layer(map: maplibregl.Map, blobUrl: string, bbox: [number, number, number, number]) {
   const [west, south, east, north] = bbox
@@ -88,10 +156,8 @@ function addS2Layer(map: maplibregl.Map, blobUrl: string, bbox: [number, number,
         coordinates: [[west, north], [east, north], [east, south], [west, south]],
       })
     }
-    if (!map.getLayer(S2_LAYER_ID)) {
-      map.addLayer({ id: S2_LAYER_ID, type: 'raster', source: S2_LAYER_ID,
-        paint: { 'raster-opacity': 0.85 } })
-    }
+    if (!map.getLayer(S2_LAYER_ID))
+      map.addLayer({ id: S2_LAYER_ID, type: 'raster', source: S2_LAYER_ID, paint: { 'raster-opacity': 0.85 } })
   } catch (err) { console.warn('[SatellitePanel] addS2Layer:', err) }
 }
 
@@ -99,51 +165,18 @@ function removeS2Layer(map: maplibregl.Map) {
   try {
     if (map.getLayer(S2_LAYER_ID)) map.removeLayer(S2_LAYER_ID)
     if (map.getSource(S2_LAYER_ID)) map.removeSource(S2_LAYER_ID)
-  } catch { /* teardown */ }
+  } catch {}
 }
 
-function addTrackLayer(map: maplibregl.Map, passes: Overpass[]) {
-  const geojson = buildTracksGeoJSON(passes)
-  try {
-    if (map.getSource(TRACK_SOURCE_ID)) {
-      (map.getSource(TRACK_SOURCE_ID) as maplibregl.GeoJSONSource).setData(geojson)
-    } else {
-      map.addSource(TRACK_SOURCE_ID, { type: 'geojson', data: geojson })
-    }
-    if (!map.getLayer(TRACK_LAYER_ID)) {
-      map.addLayer({
-        id: TRACK_LAYER_ID, type: 'line', source: TRACK_SOURCE_ID,
-        paint: {
-          'line-color': [
-            'match', ['get', 'platform'],
-            'Sentinel-2A', '#38bdf8', 'Sentinel-2B', '#38bdf8',
-            'Sentinel-3A', '#818cf8', 'Sentinel-3B', '#818cf8',
-            'Landsat 8', '#fb923c', 'Landsat 9', '#f97316',
-            'Suomi-NPP (VIIRS)', '#a78bfa', 'NOAA-20 (VIIRS)', '#c084fc',
-            '#94a3b8',
-          ],
-          'line-width': 1.5,
-          'line-opacity': 0.7,
-        },
-      })
-    } else {
-      map.setLayoutProperty(TRACK_LAYER_ID, 'visibility', 'visible')
-    }
-  } catch (err) { console.warn('[SatellitePanel] addTrackLayer:', err) }
-}
-
-function removeTrackLayer(map: maplibregl.Map) {
-  try {
-    if (map.getLayer(TRACK_LAYER_ID)) map.removeLayer(TRACK_LAYER_ID)
-    if (map.getSource(TRACK_SOURCE_ID)) map.removeSource(TRACK_SOURCE_ID)
-  } catch { /* teardown */ }
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface S2State {
   visible: boolean; loading: boolean; error: string | null
   meta: { sceneId: string; acquisitionTime: string; cloudCoverPct: number | null } | null
 }
 const S2_INIT: S2State = { visible: false, loading: false, error: null, meta: null }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const S: Record<string, React.CSSProperties> = {
   section:    { marginBottom: 24 },
@@ -163,7 +196,10 @@ const S: Record<string, React.CSSProperties> = {
   checkbox:   { accentColor: '#38bdf8', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 },
   metaBadge:  { fontSize: 10, padding: '2px 6px', borderRadius: 3, background: '#2d3148', color: '#94a3b8', marginLeft: 6 },
   card:       { background: '#141621', borderRadius: 6, padding: '10px 12px', marginBottom: 10 },
+  hint:       { fontSize: 10, color: '#334155', marginTop: 6 },
 }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SatellitePanel() {
   const { map } = useMapContext()
@@ -171,7 +207,8 @@ export default function SatellitePanel() {
   const overpasses = useFetch(() => getSatelliteOverpasses(AOI))
   const solarTimes = useFetch(() => getSolarTimes(CENTER.lat, CENTER.lon))
   const [s2, setS2] = useState<S2State>(S2_INIT)
-  const [tracksVisible, setTracksVisible] = useState(false)
+  const [tracksVisible,  setTracksVisible]  = useState(false)
+  const [selectedAos,    setSelectedAos]    = useState<string | null>(null)
 
   const mountedRef  = useRef(true)
   const abortRef    = useRef<AbortController | null>(null)
@@ -179,7 +216,6 @@ export default function SatellitePanel() {
   const mapRef      = useRef(map)
   mapRef.current    = map
 
-  // Base time for hour offset calculation (snapped to current UTC hour)
   const baseMs = useRef((() => {
     const d = new Date(); d.setUTCMinutes(0, 0, 0); return d.getTime()
   })())
@@ -191,11 +227,16 @@ export default function SatellitePanel() {
       abortRef.current?.abort()
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
       const m = mapRef.current
-      if (m) { removeS2Layer(m); removeTrackLayer(m) }
+      if (m) {
+        removeS2Layer(m)
+        removeLayer(m, TRACK_LAYER_ID, TRACK_SOURCE_ID)
+        removeLayer(m, HL_LAYER_ID, HL_SOURCE_ID)
+      }
     }
   }, [])
 
-  // Add/remove track layer when toggle changes or data loads
+  // ── Track layer: show/hide all tracks ────────────────────────────────────
+
   useEffect(() => {
     const m = mapRef.current
     const passes = overpasses.data
@@ -203,9 +244,10 @@ export default function SatellitePanel() {
 
     const doToggle = () => {
       if (tracksVisible) {
-        addTrackLayer(m, passes)
+        ensureTrackLayer(m, passes)
       } else {
-        removeTrackLayer(m)
+        hideLayer(m, TRACK_LAYER_ID)
+        hideLayer(m, HL_LAYER_ID)
       }
     }
 
@@ -216,6 +258,40 @@ export default function SatellitePanel() {
       return () => { m.off('load', doToggle) }
     }
   }, [tracksVisible, overpasses.data])
+
+  // ── Highlight layer: selected pass ───────────────────────────────────────
+
+  useEffect(() => {
+    const m = mapRef.current
+    const passes = overpasses.data
+    if (!m || !passes || !selectedAos) return
+
+    const pass = passes.find(p => p.aos_utc === selectedAos)
+    if (!pass || !pass.track_coords?.length) return
+
+    const doHighlight = () => {
+      ensureHighlightLayer(m, pass)
+    }
+
+    if (m.isStyleLoaded()) {
+      doHighlight()
+    } else {
+      m.once('load', doHighlight)
+      return () => { m.off('load', doHighlight) }
+    }
+  }, [selectedAos, overpasses.data])
+
+  // ── Pass click: set time + show track ────────────────────────────────────
+
+  const handlePassClick = useCallback((p: Overpass) => {
+    const aosMs = parseIso(p.aos_utc).getTime()
+    const hourOffset = Math.max(0, Math.min(167, Math.round((aosMs - baseMs.current) / 3600_000)))
+    setForecastHour(hourOffset)
+    setTracksVisible(true)      // auto-enable track layer
+    setSelectedAos(p.aos_utc)  // highlight this pass
+  }, [setForecastHour])
+
+  // ── S2 toggle ────────────────────────────────────────────────────────────
 
   const toggleS2 = useCallback(async () => {
     if (!mapRef.current) return
@@ -241,8 +317,8 @@ export default function SatellitePanel() {
 
       const doAdd = () => {
         if (!mountedRef.current) return
-        const currentMap = mapRef.current
-        if (currentMap) addS2Layer(currentMap, blobUrl, result.bbox)
+        const m = mapRef.current
+        if (m) addS2Layer(m, blobUrl, result.bbox)
       }
 
       const m = mapRef.current
@@ -261,26 +337,28 @@ export default function SatellitePanel() {
     }
   }, [s2.visible])
 
-  // Click a pass row → set planning time to AOS
-  const handlePassClick = useCallback((p: Overpass) => {
-    const aosMs = parseIso(p.aos_utc).getTime()
-    const hourOffset = Math.max(0, Math.min(167, Math.round((aosMs - baseMs.current) / 3600_000)))
-    setForecastHour(hourOffset)
-  }, [setForecastHour])
+  // ── Render ────────────────────────────────────────────────────────────────
 
-  const groups = overpasses.data ? groupByPlatform(overpasses.data) : []
+  const groups  = overpasses.data ? groupByPlatform(overpasses.data) : []
   const sunrise = solarTimes.data?.sunrise ?? null
   const sunset  = solarTimes.data?.sunset  ?? null
 
   function renderPassRow(p: Overpass, i: number) {
-    const daylit = isDaylightPass(p.aos_utc, sunrise, sunset)
+    const daylit   = isDaylightPass(p.aos_utc, sunrise, sunset)
+    const selected = p.aos_utc === selectedAos
     return (
       <tr key={i}
-        style={{ background: daylit ? '#1a2535' : undefined, cursor: 'pointer' }}
         onClick={() => handlePassClick(p)}
-        title="Click to set planning time to this pass"
+        style={{
+          background: selected ? '#1e2d45' : daylit ? '#1a2535' : undefined,
+          cursor: 'pointer',
+          outline: selected ? '1px solid #38bdf8' : undefined,
+        }}
+        title="Click to set planning time and show track"
       >
-        <td style={S.td}>{toLocalDayTime(p.aos_utc)}</td>
+        <td style={{ ...S.td, color: selected ? '#7dd3fc' : undefined }}>
+          {toLocalDayTime(p.aos_utc)}
+        </td>
         <td style={{ ...S.td, textAlign: 'center' as const }}>{p.duration_min.toFixed(0)} min</td>
         <td style={{ ...S.td, textAlign: 'center' as const,
           color: p.max_elevation_deg >= 20 ? '#22c55e' : '#94a3b8' }}>
@@ -325,25 +403,28 @@ export default function SatellitePanel() {
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
-            Sat elev ≥ 20° in green · highlighted = daytime · click row to set plan time
-          </div>
+          <p style={S.hint}>
+            Click row → set plan time + show track · elev ≥ 20° green · highlighted = daytime
+          </p>
         </div>
       )}
 
-      {/* Ground track overlay toggle */}
+      {/* Track overlay toggle */}
       <label style={S.overlayRow}>
         <input
           type="checkbox"
           style={S.checkbox}
           checked={tracksVisible}
           disabled={!overpasses.data || overpasses.loading}
-          onChange={() => setTracksVisible(v => !v)}
+          onChange={() => {
+            setTracksVisible(v => !v)
+            if (tracksVisible) setSelectedAos(null)
+          }}
         />
-        Show satellite tracks on map
+        Show all satellite tracks
       </label>
 
-      {/* Sentinel-2 overlay toggle */}
+      {/* S2 imagery toggle */}
       <label style={{ ...S.overlayRow, marginTop: 6 }}>
         <input
           type="checkbox"
@@ -353,12 +434,8 @@ export default function SatellitePanel() {
           onChange={toggleS2}
         />
         Show Sentinel-2 overlay on map
-        {s2.loading && (
-          <span style={{ marginLeft: 4, color: '#64748b', fontSize: 11 }}>⟳ fetching…</span>
-        )}
-        {s2.error && (
-          <span style={{ fontSize: 11, color: '#f87171', marginLeft: 4 }}>⚠ failed</span>
-        )}
+        {s2.loading && <span style={{ marginLeft: 4, color: '#64748b', fontSize: 11 }}>⟳ fetching…</span>}
+        {s2.error  && <span style={{ fontSize: 11, color: '#f87171', marginLeft: 4 }}>⚠ failed</span>}
       </label>
 
       {s2.meta && (
@@ -366,14 +443,11 @@ export default function SatellitePanel() {
           <span style={S.metaBadge}>
             {s2.meta.acquisitionTime
               ? parseIso(s2.meta.acquisitionTime).toLocaleDateString('en-GB', {
-                  day: '2-digit', month: 'short', year: 'numeric',
-                })
+                  day: '2-digit', month: 'short', year: 'numeric' })
               : '—'}
           </span>
           {s2.meta.cloudCoverPct !== null && (
-            <span style={{ ...S.metaBadge, marginLeft: 4 }}>
-              ☁ {s2.meta.cloudCoverPct.toFixed(0)}%
-            </span>
+            <span style={{ ...S.metaBadge, marginLeft: 4 }}>☁ {s2.meta.cloudCoverPct.toFixed(0)}%</span>
           )}
           {s2.meta.sceneId && (
             <div style={{ marginTop: 3, color: '#334155', fontSize: 10,
