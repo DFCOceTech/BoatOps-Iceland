@@ -17,6 +17,11 @@ const wms = (baseUrl: string, layer: string, extra = '') =>
   `&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256` +
   `&FORMAT=image/png&TRANSPARENT=TRUE&STYLES=${extra}`
 
+// GBIF tile base URL — XYZ raster tiles, transparent background, no auth required
+const GBIF_TILES = (taxonKey: number, style: string) =>
+  `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png` +
+  `?taxonKey=${taxonKey}&style=${style}`
+
 export const BASE_LAYER_DEFS: RasterLayerDef[] = [
   {
     id: 'seamap',
@@ -58,5 +63,33 @@ export const BASE_LAYER_DEFS: RasterLayerDef[] = [
     },
     paint: { 'raster-opacity': 0.7 },
     // Legend and click interaction handled by EmodnetPanel (LayerPanel special-cases this id)
+  },
+  {
+    id: 'gbif-seagrass',
+    label: 'Zostera marina (seagrass) — GBIF',
+    defaultVisible: false,
+    source: {
+      type: 'raster',
+      // taxonKey 2863967 = Zostera marina; green.point = transparent PNG with green dots
+      tiles: [GBIF_TILES(2863967, 'green.point')],
+      tileSize: 256,
+      attribution: '© <a href="https://www.gbif.org/species/2863967">GBIF occurrence records</a>',
+      maxzoom: 14,
+    },
+    paint: { 'raster-opacity': 0.85 },
+  },
+  {
+    id: 'gbif-macroalgae',
+    label: 'Fucus vesiculosus (macroalgae) — GBIF',
+    defaultVisible: false,
+    source: {
+      type: 'raster',
+      // taxonKey 8222574 = Fucus vesiculosus; fire.point = transparent PNG with warm dots
+      tiles: [GBIF_TILES(8222574, 'fire.point')],
+      tileSize: 256,
+      attribution: '© <a href="https://www.gbif.org/species/8222574">GBIF occurrence records</a>',
+      maxzoom: 14,
+    },
+    paint: { 'raster-opacity': 0.85 },
   },
 ]
