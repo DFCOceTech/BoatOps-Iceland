@@ -7,7 +7,15 @@ from boatops.services import cmems
 
 router = APIRouter(prefix="/api/map", tags=["map"])
 
-BBOX_PARAMS = "west: float, south: float, east: float, north: float"
+_MAX_BBOX_SPAN = 30.0
+_MIN_STEP      = 0.1
+
+
+def _validate_bbox(west: float, south: float, east: float, north: float) -> None:
+    if east <= west or north <= south:
+        raise HTTPException(status_code=422, detail="bbox must have positive width and height")
+    if (east - west) > _MAX_BBOX_SPAN or (north - south) > _MAX_BBOX_SPAN:
+        raise HTTPException(status_code=422, detail=f"bbox span must be ≤{_MAX_BBOX_SPAN}°")
 
 
 def _png_response(fn, bbox: tuple) -> Response:
@@ -29,21 +37,25 @@ def _png_response(fn, bbox: tuple) -> Response:
 
 @router.get("/bathymetry")
 def get_bathymetry(west: float, south: float, east: float, north: float):
+    _validate_bbox(west, south, east, north)
     return _png_response(cmems.get_bathymetry_overlay, (west, south, east, north))
 
 
 @router.get("/sst")
 def get_sst(west: float, south: float, east: float, north: float):
+    _validate_bbox(west, south, east, north)
     return _png_response(cmems.get_sst_overlay, (west, south, east, north))
 
 
 @router.get("/salinity")
 def get_salinity(west: float, south: float, east: float, north: float):
+    _validate_bbox(west, south, east, north)
     return _png_response(cmems.get_salinity_overlay, (west, south, east, north))
 
 
 @router.get("/currents")
 def get_currents(west: float, south: float, east: float, north: float):
+    _validate_bbox(west, south, east, north)
     return _png_response(cmems.get_currents_overlay, (west, south, east, north))
 
 
@@ -53,10 +65,12 @@ def get_currents_grid(
     east: float = 15.0, north: float = 56.0,
     step: float = 0.25,
 ):
+    _validate_bbox(west, south, east, north)
+    if step < _MIN_STEP:
+        raise HTTPException(status_code=422, detail=f"step must be ≥{_MIN_STEP}°")
     try:
         return cmems.get_currents_grid(west, south, east, north, step)
     except Exception as exc:
-        from fastapi import HTTPException
         raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
 
 
@@ -125,6 +139,7 @@ def get_gbif_occurrences(
 
 @router.get("/isobaths")
 def get_isobaths(west: float, south: float, east: float, north: float):
+    _validate_bbox(west, south, east, north)
     try:
         return cmems.get_isobaths((west, south, east, north))
     except Exception as exc:
@@ -133,9 +148,11 @@ def get_isobaths(west: float, south: float, east: float, north: float):
 
 @router.get("/chlorophyll")
 def get_chlorophyll(west: float, south: float, east: float, north: float):
+    _validate_bbox(west, south, east, north)
     return _png_response(cmems.get_chlorophyll_overlay, (west, south, east, north))
 
 
 @router.get("/oxygen")
 def get_oxygen(west: float, south: float, east: float, north: float):
+    _validate_bbox(west, south, east, north)
     return _png_response(cmems.get_oxygen_overlay, (west, south, east, north))

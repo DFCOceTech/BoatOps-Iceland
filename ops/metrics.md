@@ -14,6 +14,8 @@
 | Turn | Start (UTC) | End (UTC) | Duration | Description |
 |------|-------------|-----------|----------|-------------|
 | 1 | | | | Bootstrap: copy template, populate all docs |
+| 2 | 2026-05-11T10:11:42Z | 2026-05-11T11:23:23Z | ~72 min | All 8 improvements.md items + README.md; 66 tests pass |
+| 3 | 2026-05-17T12:10:29Z | 2026-05-17T12:38:11Z | ~28 min | Pre-push security review; fixed SSRF, bbox DoS, added *.bsp to .gitignore |
 
 ## Subagent Token Usage
 

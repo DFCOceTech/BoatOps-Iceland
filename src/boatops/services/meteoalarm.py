@@ -27,7 +27,10 @@ _COUNTRY_SLUG = {
 
 @cachetools.cached(cache=_cache, lock=_lock, key=cachetools.keys.hashkey)
 def get_advisories(country: str = "DE") -> dict:
-    slug = _COUNTRY_SLUG.get(country.upper(), country.lower())
+    code = country.upper()
+    if code not in _COUNTRY_SLUG:
+        raise ValueError(f"unsupported country code: {country!r}; allowed: {sorted(_COUNTRY_SLUG)}")
+    slug = _COUNTRY_SLUG[code]
     resp = httpx.get(_FEED_URL.format(slug=slug), timeout=15)
     resp.raise_for_status()
 

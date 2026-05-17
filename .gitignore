@@ -70,5 +70,9 @@ Thumbs.db
 *.prj
 *.cpg
 *.gpkg
+
+# NASA SPICE ephemeris (large binary, public data — download separately)
+*.bsp
+
 playwright-report/
 test-results/
