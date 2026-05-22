@@ -79,6 +79,18 @@ def _bgc_ds():
     })
 
 
+def _wave_ds(n_times: int = 8) -> xr.Dataset:
+    """Mimics cmems_mod_bal_wav_anfc_PT1H-i (hourly, VHM0 only)."""
+    lats  = np.linspace(53.5, 56.0, 8)
+    lons  = np.linspace(9.5,  15.0, 10)
+    times = pd.date_range("2026-05-02", periods=n_times, freq="h")
+    hs    = np.full((n_times, 8, 10), 0.5, dtype=float)
+    return xr.Dataset(
+        {"VHM0": (["time", "latitude", "longitude"], hs)},
+        coords={"time": times, "latitude": lats, "longitude": lons},
+    )
+
+
 @pytest.fixture(autouse=True)
 def clear_caches():
     cmems._cache.clear()
@@ -86,6 +98,8 @@ def clear_caches():
     cmems._isobath_cache.clear()
     if hasattr(cmems, '_grid_cache'):
         cmems._grid_cache.clear()
+    if hasattr(cmems, '_ds_cache'):
+        cmems._ds_cache.clear()
     yield
 
 
@@ -169,6 +183,14 @@ def test_sst_colorscale(mock_ds):
     assert cs["vmax"] > cs["vmin"]
 
 
+@patch("copernicusmarine.open_dataset", return_value=_sst_ds())
+def test_sst_hour_param(mock_ds):
+    """hour=0 on an hourly dataset should select the first timestep."""
+    resp = client.get(f"/api/map/sst?{BBOX_QS}&hour=0")
+    _assert_png_response(resp)
+    assert resp.headers["x-timestamp"].startswith("2026-05-02")
+
+
 # ── /api/map/salinity ─────────────────────────────────────────────────────────
 
 @patch("copernicusmarine.open_dataset", return_value=_phy_ds())
@@ -181,6 +203,13 @@ def test_salinity_colorscale(mock_ds):
     resp = client.get(f"/api/map/salinity?{BBOX_QS}")
     cs = json.loads(resp.headers["x-colorscale"])
     assert cs["cmap"] == "cmocean.haline"
+
+
+@patch("copernicusmarine.open_dataset", return_value=_phy_ds())
+def test_salinity_hour_param(mock_ds):
+    resp = client.get(f"/api/map/salinity?{BBOX_QS}&hour=0")
+    _assert_png_response(resp)
+    assert resp.headers["x-timestamp"].startswith("2026-05-02")
 
 
 # ── /api/map/currents ─────────────────────────────────────────────────────────
@@ -198,6 +227,13 @@ def test_currents_colorscale(mock_ds):
     assert cs["vmax"] > 0  # autoscaled; any positive cap is valid
 
 
+@patch("copernicusmarine.open_dataset", return_value=_phy_ds())
+def test_currents_hour_param(mock_ds):
+    resp = client.get(f"/api/map/currents?{BBOX_QS}&hour=0")
+    _assert_png_response(resp)
+    assert resp.headers["x-timestamp"].startswith("2026-05-02")
+
+
 # ── /api/map/chlorophyll ──────────────────────────────────────────────────────
 
 @patch("copernicusmarine.open_dataset", return_value=_bgc_ds())
@@ -211,6 +247,35 @@ def test_chlorophyll_log_scale(mock_ds):
     cs = json.loads(resp.headers["x-colorscale"])
     assert cs.get("scale") == "log"
     assert cs["cmap"] == "cmocean.algae"
+
+
+@patch("copernicusmarine.open_dataset", return_value=_bgc_ds())
+def test_chlorophyll_hour_param(mock_ds):
+    resp = client.get(f"/api/map/chlorophyll?{BBOX_QS}&hour=0")
+    _assert_png_response(resp)
+    assert resp.headers["x-timestamp"].startswith("2026-05-02")
+
+
+# ── /api/waves/overlay ────────────────────────────────────────────────────────
+
+@patch("copernicusmarine.open_dataset", return_value=_wave_ds())
+def test_wave_overlay_png(mock_ds):
+    resp = client.get(f"/api/waves/overlay?{BBOX_QS}")
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"] == "image/png"
+    assert resp.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert "x-timestamp" in resp.headers
+    cs = json.loads(resp.headers["x-colorscale"])
+    assert cs["cmap"] == "cmocean.amp"
+    assert cs["vmin"] == 0.0
+
+
+@patch("copernicusmarine.open_dataset", return_value=_wave_ds())
+def test_wave_overlay_hour_param(mock_ds):
+    resp = client.get(f"/api/waves/overlay?{BBOX_QS}&hour=5")
+    assert resp.status_code == 200
+    assert resp.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert resp.headers["x-timestamp"].startswith("2026-05-02")
 
 
 # ── /api/map/oxygen ───────────────────────────────────────────────────────────

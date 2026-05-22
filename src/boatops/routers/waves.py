@@ -18,9 +18,9 @@ def get_forecast(lat: float, lon: float):
 
 
 @router.get("/overlay")
-def get_overlay(west: float, south: float, east: float, north: float):
+def get_overlay(west: float, south: float, east: float, north: float, hour: int | None = None):
     try:
-        png, meta = cmems.get_wave_overlay((west, south, east, north))
+        png, meta = cmems.get_wave_overlay((west, south, east, north), hour)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
     return Response(

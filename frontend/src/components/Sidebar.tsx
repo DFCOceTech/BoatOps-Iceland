@@ -10,6 +10,8 @@ import WavePanel from './WavePanel'
 import SolarPanel from './SolarPanel'
 import SatellitePanel from './SatellitePanel'
 import GoNoDashboard from './GoNoDashboard'
+import StationMarkers from './StationMarkers'
+import MapClickPanel from './MapClickPanel'
 import { GoNoGoProvider } from '../context/GoNoGoContext'
 
 export default function Sidebar() {
@@ -71,8 +73,10 @@ export default function Sidebar() {
           </h1>
           <GoNoGoProvider>
             <GoNoDashboard />
+            <MapClickPanel />
             <LayerPanel />
             <IsobathLayer />
+            <StationMarkers />
 
             {/* Biological occurrence layers (GBIF, field observations only) */}
             <section style={{ marginBottom: 24 }}>

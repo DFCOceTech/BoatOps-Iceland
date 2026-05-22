@@ -277,7 +277,7 @@ export default function WindLayerPanel() {
           type="checkbox"
           style={S.checkbox}
           checked={visible}
-          disabled={loading}
+          disabled={loading && !grid}
           onChange={toggle}
         />
         Animated wind overlay

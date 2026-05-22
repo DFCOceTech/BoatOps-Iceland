@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type maplibregl from 'maplibre-gl'
 import { useMapContext } from '../context/MapContext'
+import { useTimeContext } from '../context/TimeContext'
 import { getCurrentsGrid } from '../api/client'
 import type { WindGrid } from '../api/client'
 
@@ -9,7 +10,8 @@ const PARTICLE_COUNT  = 500
 const TARGET_PX_PER_S = 80    // slower than wind — ocean currents are subtle
 const MIN_SPEED_FRAC  = 0.20
 const FADE_ALPHA      = 0.030
-const MS_TO_KT        = 1.944
+// Speed is shown in m/s (SI); convert only for display if needed
+
 
 function getCurrentAt(lat: number, lon: number, g: WindGrid): [number, number] {
   const [west, south, east, north] = g.bbox
@@ -104,17 +106,16 @@ const S: Record<string, React.CSSProperties> = {
 }
 
 function CurrentsLegend({ vmaxSpeed }: { vmaxSpeed: number }) {
-  const vmaxKt = (vmaxSpeed * MS_TO_KT).toFixed(2)
-  const midKt  = (vmaxSpeed * MS_TO_KT * 0.5).toFixed(2)
+  const midMs = (vmaxSpeed * 0.5).toFixed(2)
   const grad = 'linear-gradient(to right, hsl(230,60%,25%), hsl(180,75%,35%), hsl(140,70%,45%), hsl(80,90%,55%)'
   return (
     <div style={{ paddingLeft: 23, marginTop: 6 }}>
       <div style={{ height: 6, borderRadius: 3, background: grad }} />
       <div style={{ display: 'flex', justifyContent: 'space-between',
         fontSize: 10, color: '#475569', marginTop: 2 }}>
-        <span>0 kt</span>
-        <span>{midKt} kt</span>
-        <span>{vmaxKt} kt</span>
+        <span>0 m/s</span>
+        <span>{midMs} m/s</span>
+        <span>{vmaxSpeed.toFixed(2)} m/s</span>
       </div>
     </div>
   )
@@ -122,26 +123,29 @@ function CurrentsLegend({ vmaxSpeed }: { vmaxSpeed: number }) {
 
 export default function CurrentsLayerPanel() {
   const { map } = useMapContext()
+  const { forecastHour } = useTimeContext()
   const [visible,  setVisible]  = useState(false)
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState<string | null>(null)
   const [grid,     setGrid]     = useState<WindGrid | null>(null)
 
-  const animRef      = useRef<number>(0)
-  const canvasRef    = useRef<HTMLCanvasElement | null>(null)
-  const particlesRef = useRef<Particle[]>([])
-  const gridRef      = useRef<WindGrid | null>(null)
-  const mapRef       = useRef(map)
-  const fetchIdRef   = useRef(0)  // stale-fetch guard
-  gridRef.current = grid
-  mapRef.current  = map
+  const animRef        = useRef<number>(0)
+  const canvasRef      = useRef<HTMLCanvasElement | null>(null)
+  const particlesRef   = useRef<Particle[]>([])
+  const gridRef        = useRef<WindGrid | null>(null)
+  const mapRef         = useRef(map)
+  const fetchIdRef     = useRef(0)  // stale-fetch guard
+  const forecastHourRef = useRef(forecastHour)
+  gridRef.current        = grid
+  mapRef.current         = map
+  forecastHourRef.current = forecastHour
 
   const fetchGrid = useCallback(async () => {
     const id = ++fetchIdRef.current
     setLoading(true)
     setError(null)
     try {
-      const result = await getCurrentsGrid(AOI)
+      const result = await getCurrentsGrid(AOI, forecastHourRef.current)
       if (id === fetchIdRef.current) setGrid(result)
     } catch (e) {
       if (id === fetchIdRef.current) {
@@ -153,14 +157,26 @@ export default function CurrentsLayerPanel() {
     }
   }, [])
 
+  // Refetch when the time slider changes and the overlay is active.
+  const visibleRef = useRef(visible)
+  visibleRef.current = visible
+  const fetchGridRef = useRef(fetchGrid)
+  fetchGridRef.current = fetchGrid
+  useEffect(() => {
+    if (visibleRef.current) fetchGridRef.current()
+  }, [forecastHour]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggle = useCallback(() => {
-    if (visible) {
-      setVisible(false)
-    } else {
+    if (!visible && !loading) {
       if (!grid) fetchGrid()
       setVisible(true)
+    } else {
+      // Hide immediately; invalidate any in-flight fetch via fetchIdRef
+      fetchIdRef.current++
+      setLoading(false)
+      setVisible(false)
     }
-  }, [visible, grid, fetchGrid])
+  }, [visible, loading, grid, fetchGrid])
 
   useEffect(() => {
     const m = mapRef.current
@@ -232,7 +248,7 @@ export default function CurrentsLayerPanel() {
     }
   }, [visible, grid])
 
-  const vmaxKt = grid ? (grid.vmax_speed * MS_TO_KT).toFixed(2) : null
+  const vmaxMs = grid ? grid.vmax_speed.toFixed(2) : null
 
   return (
     <section style={S.section}>
@@ -250,7 +266,7 @@ export default function CurrentsLayerPanel() {
           type="checkbox"
           style={S.checkbox}
           checked={visible}
-          disabled={loading}
+          disabled={loading && !grid}
           onChange={toggle}
         />
         Animated currents overlay
@@ -261,7 +277,7 @@ export default function CurrentsLayerPanel() {
         <>
           <CurrentsLegend vmaxSpeed={grid.vmax_speed} />
           <p style={S.meta}>
-            Max {vmaxKt} kt · {grid.timestamp.slice(0, 16).replace('T', ' ')} UTC
+            Max {vmaxMs} m/s · {grid.timestamp.slice(0, 16).replace('T', ' ')} UTC
           </p>
         </>
       )}

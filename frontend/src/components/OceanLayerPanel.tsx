@@ -1,4 +1,5 @@
 import { useMapContext } from '../context/MapContext'
+import { useTimeContext } from '../context/TimeContext'
 import { useApiLayers } from '../hooks/useApiLayers'
 import { OCEAN_LAYER_DEFS } from '../config/oceanLayers'
 import ColorscaleLegend from './ColorscaleLegend'
@@ -30,7 +31,8 @@ if (typeof document !== 'undefined' && !document.getElementById('spin-kf')) {
 
 export default function OceanLayerPanel() {
   const { map } = useMapContext()
-  const { layers, toggle, setOpacity, refresh } = useApiLayers(OCEAN_LAYER_DEFS, map)
+  const { forecastHour } = useTimeContext()
+  const { layers, toggle, setOpacity, refresh } = useApiLayers(OCEAN_LAYER_DEFS, map, forecastHour)
 
   return (
     <section style={S.section}>
@@ -49,7 +51,7 @@ export default function OceanLayerPanel() {
                 type="checkbox"
                 style={S.checkbox}
                 checked={state.visible}
-                disabled={state.loading}
+                disabled={state.loading && !state.blobUrl}
                 onChange={() => toggle(def.id)}
               />
               <span style={S.label}>{def.label}</span>

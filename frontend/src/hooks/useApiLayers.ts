@@ -44,11 +44,26 @@ function addImageLayer(
       map.addLayer({
         id, type: 'raster', source: id,
         layout: { visibility: 'visible' },
-        paint: { 'raster-opacity': opacity },
+        paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
       })
     }
   } catch (err) {
     console.warn(`[useApiLayers] addImageLayer(${id}):`, err)
+  }
+}
+
+function updateImageSource(map: maplibregl.Map, id: string, blobUrl: string, bbox: [number,number,number,number]) {
+  const [west, south, east, north] = bbox
+  try {
+    const src = map.getSource(id) as maplibregl.ImageSource | undefined
+    if (src) {
+      src.updateImage({
+        url: blobUrl,
+        coordinates: [[west, north], [east, north], [east, south], [west, south]],
+      })
+    }
+  } catch (err) {
+    console.warn(`[useApiLayers] updateImageSource(${id}):`, err)
   }
 }
 
@@ -59,16 +74,19 @@ function removeImageLayer(map: maplibregl.Map, id: string) {
   } catch { /* map may be in teardown */ }
 }
 
-export function useApiLayers(defs: ApiLayerDef[], map: maplibregl.Map | null) {
+export function useApiLayers(defs: ApiLayerDef[], map: maplibregl.Map | null, hour = 0) {
   const [layers, setLayers] = useState<LayersState>(() => makeInitial(defs))
-  const mountedRef = useRef(true)
-  const abortRefs = useRef<Record<string, AbortController>>({})
+  const mountedRef   = useRef(true)
+  const abortRefs    = useRef<Record<string, AbortController>>({})
+  const hourRef      = useRef(hour)
+  hourRef.current    = hour
+  const layersRef    = useRef(layers)
+  layersRef.current  = layers
 
   useEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      // Cancel any in-flight fetches and revoke blob URLs.
       Object.values(abortRefs.current).forEach(c => c.abort())
       setLayers(prev => {
         Object.values(prev).forEach(s => {
@@ -84,32 +102,36 @@ export function useApiLayers(defs: ApiLayerDef[], map: maplibregl.Map | null) {
     const def = defs.find(d => d.id === id)
     if (!def) return
 
-    // Cancel any previous in-flight fetch for this layer.
+    const currentHour = hourRef.current
+
     abortRefs.current[id]?.abort()
     const controller = new AbortController()
     abortRefs.current[id] = controller
 
-    // Revoke old blob URL and remove existing map layer.
-    setLayers(prev => {
-      const old = prev[id]
-      if (old?.blobUrl) {
-        URL.revokeObjectURL(old.blobUrl)
-        removeImageLayer(map, id)
-      }
-      return { ...prev, [id]: { ...prev[id], loading: true, error: null, blobUrl: null, visible: true } }
-    })
+    // Mark loading; keep existing blobUrl so the old image remains visible.
+    setLayers(prev => ({ ...prev, [id]: { ...prev[id], loading: true, error: null, visible: true } }))
 
     try {
-      const result = await def.fetch()
+      const result = await def.fetch(currentHour)
       if (controller.signal.aborted || !mountedRef.current) return
 
       const blobUrl = URL.createObjectURL(result.blob)
+      const prev = layersRef.current[id]
 
-      // Read current opacity from latest state via functional update to avoid stale closure.
-      // Initial add always uses DEFAULT_OPACITY; user-driven opacity changes go through setOpacity.
-      const doAdd = () => addImageLayer(map, id, blobUrl, result.bbox, DEFAULT_OPACITY)
-      if (map.isStyleLoaded()) doAdd()
-      else map.once('load', doAdd)
+      if (prev?.blobUrl && map.getSource(id)) {
+        // Layer already exists — swap the image in place without removing the layer.
+        URL.revokeObjectURL(prev.blobUrl)
+        const doUpdate = () => updateImageSource(map, id, blobUrl, result.bbox)
+        if (map.isStyleLoaded()) doUpdate()
+        else map.once('load', doUpdate)
+      } else {
+        // First load — remove any stale source/layer, add fresh.
+        if (prev?.blobUrl) URL.revokeObjectURL(prev.blobUrl)
+        removeImageLayer(map, id)
+        const doAdd = () => addImageLayer(map, id, blobUrl, result.bbox, DEFAULT_OPACITY)
+        if (map.isStyleLoaded()) doAdd()
+        else map.once('load', doAdd)
+      }
 
       setLayers(prev => ({
         ...prev,
@@ -130,23 +152,36 @@ export function useApiLayers(defs: ApiLayerDef[], map: maplibregl.Map | null) {
     }
   }, [map, defs])
 
+  // Stable refs so the hour-change effect never goes stale.
+  const fetchLayerRef = useRef(fetchLayer)
+  fetchLayerRef.current = fetchLayer
+
+  // Refetch all visible, time-varying layers when forecast hour changes.
+  useEffect(() => {
+    const currentLayers = layersRef.current
+    const ids = defs
+      .filter(d => d.timeVarying !== false)
+      .map(d => d.id)
+      .filter(id => currentLayers[id]?.visible && !!currentLayers[id]?.blobUrl)
+    for (const id of ids) fetchLayerRef.current(id)
+  }, [hour]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggle = useCallback((id: string) => {
     const state = layers[id]
-    if (!state || state.loading) return
+    if (!state) return
 
-    if (!state.visible && !state.blobUrl) {
-      // First enable: fetch data.
+    if (!state.visible && !state.loading) {
+      // Not shown and idle: start a fresh fetch for the current hour.
       fetchLayer(id)
       return
     }
 
-    const nextVisible = !state.visible
+    // Visible or mid-refetch: hide immediately and abort any in-flight request.
+    abortRefs.current[id]?.abort()
     try {
-      if (map?.getLayer(id)) {
-        map.setLayoutProperty(id, 'visibility', nextVisible ? 'visible' : 'none')
-      }
+      if (map?.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
     } catch { /* layer not yet added */ }
-    setLayers(prev => ({ ...prev, [id]: { ...prev[id], visible: nextVisible } }))
+    setLayers(prev => ({ ...prev, [id]: { ...prev[id], visible: false, loading: false } }))
   }, [map, layers, fetchLayer])
 
   const setOpacity = useCallback((id: string, opacity: number) => {

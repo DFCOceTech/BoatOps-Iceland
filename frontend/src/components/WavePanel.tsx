@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useMapContext } from '../context/MapContext'
+import { useTimeContext } from '../context/TimeContext'
 import { useApiLayers } from '../hooks/useApiLayers'
 import { useFetch } from '../hooks/useFetch'
 import { getWaveForecast, getWaveOverlay } from '../api/client'
@@ -14,7 +15,7 @@ const WAVE_OVERLAY_DEF: ApiLayerDef = {
   id: 'api-wave-overlay',
   label: 'Wave Height Hs',
   unit: 'm',
-  fetch: () => getWaveOverlay(AOI),
+  fetch: (hour?) => getWaveOverlay(AOI, hour),
   // cmocean.amp: white (calm) → amber → dark red (rough)
   gradient: 'linear-gradient(to right, #fffbf5, #f5c842, #e06020, #8b1010, #1a0000)',
 }
@@ -53,7 +54,8 @@ const S: Record<string, React.CSSProperties> = {
 
 export default function WavePanel() {
   const { map } = useMapContext()
-  const { layers, toggle } = useApiLayers([WAVE_OVERLAY_DEF], map)
+  const { forecastHour } = useTimeContext()
+  const { layers, toggle } = useApiLayers([WAVE_OVERLAY_DEF], map, forecastHour)
   const waveForecast = useFetch(() => getWaveForecast(CENTER.lat, CENTER.lon))
   const { update, refreshSignal } = useGoNoGo()
 
@@ -113,7 +115,7 @@ export default function WavePanel() {
           type="checkbox"
           style={S.checkbox}
           checked={overlayState?.visible ?? false}
-          disabled={overlayState?.loading ?? false}
+          disabled={(overlayState?.loading ?? false) && !overlayState?.blobUrl}
           onChange={() => toggle(WAVE_OVERLAY_DEF.id)}
         />
         Show wave height overlay on map

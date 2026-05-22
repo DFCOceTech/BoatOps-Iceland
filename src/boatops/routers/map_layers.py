@@ -42,21 +42,21 @@ def get_bathymetry(west: float, south: float, east: float, north: float):
 
 
 @router.get("/sst")
-def get_sst(west: float, south: float, east: float, north: float):
+def get_sst(west: float, south: float, east: float, north: float, hour: int | None = None):
     _validate_bbox(west, south, east, north)
-    return _png_response(cmems.get_sst_overlay, (west, south, east, north))
+    return _png_response(lambda bbox: cmems.get_sst_overlay(bbox, hour), (west, south, east, north))
 
 
 @router.get("/salinity")
-def get_salinity(west: float, south: float, east: float, north: float):
+def get_salinity(west: float, south: float, east: float, north: float, hour: int | None = None):
     _validate_bbox(west, south, east, north)
-    return _png_response(cmems.get_salinity_overlay, (west, south, east, north))
+    return _png_response(lambda bbox: cmems.get_salinity_overlay(bbox, hour), (west, south, east, north))
 
 
 @router.get("/currents")
-def get_currents(west: float, south: float, east: float, north: float):
+def get_currents(west: float, south: float, east: float, north: float, hour: int | None = None):
     _validate_bbox(west, south, east, north)
-    return _png_response(cmems.get_currents_overlay, (west, south, east, north))
+    return _png_response(lambda bbox: cmems.get_currents_overlay(bbox, hour), (west, south, east, north))
 
 
 @router.get("/currents-grid")
@@ -64,12 +64,13 @@ def get_currents_grid(
     west: float = 9.5, south: float = 53.5,
     east: float = 15.0, north: float = 56.0,
     step: float = 0.25,
+    hour: int | None = None,
 ):
     _validate_bbox(west, south, east, north)
     if step < _MIN_STEP:
         raise HTTPException(status_code=422, detail=f"step must be ≥{_MIN_STEP}°")
     try:
-        return cmems.get_currents_grid(west, south, east, north, step)
+        return cmems.get_currents_grid(west, south, east, north, step, hour)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
 
@@ -147,9 +148,9 @@ def get_isobaths(west: float, south: float, east: float, north: float):
 
 
 @router.get("/chlorophyll")
-def get_chlorophyll(west: float, south: float, east: float, north: float):
+def get_chlorophyll(west: float, south: float, east: float, north: float, hour: int | None = None):
     _validate_bbox(west, south, east, north)
-    return _png_response(cmems.get_chlorophyll_overlay, (west, south, east, north))
+    return _png_response(lambda bbox: cmems.get_chlorophyll_overlay(bbox, hour), (west, south, east, north))
 
 
 @router.get("/oxygen")

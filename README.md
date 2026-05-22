@@ -10,12 +10,14 @@ BoatOps provides a React + MapLibre GL JS frontend consuming a FastAPI Python ba
 
 | Panel | Data source | What it shows |
 |-------|-------------|---------------|
+| Go/No-Go dashboard | All of the above | Verdict badge (GO / CAUTION / NO-GO) + per-capability status rows with configurable thresholds |
+| Location assessment | CMEMS + Open-Meteo | Click anywhere on the map for an instant Go/No-Go assessment (waves + wind at the active planning hour) |
 | Weather | Open-Meteo | 7-day wind (m/s), temperature, precipitation, cloud cover; MeteoAlarm advisories |
-| Waves | CMEMS Baltic wave model | Significant wave height Hs, wave direction |
+| Waves | CMEMS Baltic wave model | Significant wave height Hs, wave direction; time-varying overlay (hourly) |
 | Solar | suncalc Python library | Sunrise/sunset, civil/nautical/astronomical twilight, solar elevation arc |
-| Satellite | CelesTrak TLE + CDSE OData | Overpass table for Sentinel-2/3, Landsat 8/9, VIIRS; ground track overlay; latest cloud-free Sentinel-2 imagery |
-| Oceanographic | CMEMS Baltic models | SST, salinity, surface currents (animated), chlorophyll, bottom oxygen |
-| Go/No-Go | All of the above | Verdict badge + per-capability status rows with configurable thresholds |
+| Satellite | CelesTrak TLE + CDSE OData | Overpass table for Sentinel-1 A/C (SAR, day+night), Sentinel-2/3, Landsat 8/9, VIIRS; ground track overlay; latest cloud-free Sentinel-2 imagery |
+| Oceanographic | CMEMS Baltic models | SST, salinity, surface currents (animated, m/s), chlorophyll, bottom oxygen — all time-varying |
+| Monitoring stations | BSH / PTB | MARNET buoys (Fehmarnbelt, Darßer Schwelle, Oder Bank) and FINO2 offshore platform |
 
 ### Map Layers
 
@@ -23,12 +25,18 @@ BoatOps provides a React + MapLibre GL JS frontend consuming a FastAPI Python ba
 |--------|--------|
 | OpenSeaMap Seamarks | OpenSeaMap raster tiles (20% larger icons) |
 | GEBCO Bathymetry | GEBCO WMS |
-| EMODnet Seabed Habitats | EMODnet WMS |
-| Isobaths (10/25/100 m) | CMEMS static bathymetry, generated as GeoJSON contour lines |
-| Wind overlay | Animated particles, Open-Meteo grid |
-| Surface currents | Animated particles, CMEMS physics model |
+| EMODnet Seabed Habitats | EMODnet WMS (click-to-info popup) |
+| Isobaths (10/25/100 m) | CMEMS static bathymetry, GeoJSON contour lines |
+| MARNET buoys & FINO2 | Static markers — click for station details |
+| Wind overlay | Animated particles, Open-Meteo grid (time-varying) |
+| Surface currents | Animated particles, CMEMS physics model (time-varying, m/s) |
+| SST overlay | CMEMS SST L4 NRT, time-varying |
+| Salinity overlay | CMEMS Baltic Physics, time-varying |
+| Chlorophyll overlay | CMEMS Baltic BGC, log-scale, time-varying |
+| Wave height overlay | CMEMS wave model, time-varying (hourly) |
 | Satellite ground tracks | Vector lines derived from TLE propagation |
 | Sentinel-2 imagery | CDSE Sentinel Hub Process API |
+| GBIF occurrence layers | Zostera marina, Fucus vesiculosus |
 
 ## Quick Start
 
@@ -112,6 +120,8 @@ frontend/src/
   components/          React components (MapView, panels, TimeSlider)
   config/              Layer definitions, dark basemap style
   context/             MapContext, GoNoGoContext, TimeContext
+  hooks/               useApiLayers, useFetch (time-aware layer management)
+  utils/               popupStyles (shared MapLibre dark popup CSS)
   api/client.ts        Typed API client
 
 openspec/              Capability specifications (spec.md, design.md)
@@ -132,30 +142,68 @@ tests/                 Unit + integration tests
 | `CDSE_PASSWORD` | Yes | CDSE password (for Sentinel-2 imagery) |
 | `CLAUDE_API_KEY` | No | Anthropic API key (for future AI synthesis) |
 
-### Planning Time Slider
+## Planning Time Slider
 
 A time slider at the bottom of the map spans a 7-day forecast window (168 hourly steps). Sliding it updates:
-- **Weather panel** — shows conditions for the selected hour from the cached 7-day forecast
-- **Wind overlay** — refetches wind grid for the selected hour
+
+- **Weather panel** — conditions for the selected hour
+- **Wind overlay** — refetches wind particle grid for the selected hour
+- **Wave height overlay** — updates every hour (CMEMS hourly wave model)
+- **SST, salinity, chlorophyll, currents overlays** — update once per day (CMEMS daily model; 7 distinct states across the 7-day window)
 - **Satellite panel** — clicking a pass row snaps the slider to that pass's AOS time
 
-### Satellite Ground Tracks
+All CMEMS datasets are fetched once per bbox and cached for 1 hour; slider steps render from the cached dataset without re-downloading.
 
-Enable "Show satellite tracks" in the Satellite panel to overlay predicted ground tracks on the map (Sentinel-2/3, Landsat 8/9, VIIRS). Click any pass row in the overpass table to jump the planning time to that pass's acquisition-of-signal moment.
+## Satellite Overpass Predictions
+
+The Satellite panel shows predicted overpass windows for 10 platforms derived from CelesTrak TLEs and skyfield orbital propagation:
+
+| Platform | Sensor | Day-only filter |
+|----------|--------|-----------------|
+| Sentinel-1A / 1C | SAR | No — valid day and night |
+| Sentinel-2A / 2B | MSI (optical) | Yes |
+| Sentinel-3A / 3B | OLCI/SLSTR (optical) | Yes |
+| Landsat 8 / 9 | OLI (optical) | Yes |
+| Suomi-NPP (VIIRS) | VIIRS (optical) | Yes |
+| NOAA-20 (VIIRS) | VIIRS (optical) | Yes |
+
+Enable "Show satellite tracks" to overlay predicted ground tracks on the map, colour-coded by platform. Click any pass row to jump the planning time to that pass's acquisition-of-signal moment.
+
+## Location Assessment
+
+Enable "Click map for Go/No-Go assessment" in the sidebar to enter crosshair mode. Click any point in the AOI to fetch:
+
+- **Wave Hs** at the clicked location (CMEMS, nearest wet cell fallback)
+- **Wind speed and gusts** at the active planning hour (Open-Meteo)
+
+A popup appears at the clicked location showing an overall GO / CAUTION / NO-GO verdict with colour-coded rows, using the same thresholds as the main dashboard.
+
+## Monitoring Stations
+
+Toggle "MARNET buoys & FINO2" to show four markers on the map:
+
+| Station | Type | Position |
+|---------|------|----------|
+| MARNET Fehmarnbelt | BSH monitoring buoy | 54.595°N 11.183°E |
+| MARNET Darßer Schwelle | BSH monitoring buoy | 54.700°N 12.700°E |
+| MARNET Oder Bank | BSH monitoring buoy | 54.067°N 14.152°E |
+| FINO2 | Offshore research platform | 55.010°N 13.157°E |
+
+Click any marker for its name, coordinates, and station type.
 
 ## Data Sources
 
-| Source | Access | Latency |
-|--------|--------|---------|
-| Open-Meteo (weather) | Free, no auth | 15-min cache |
-| CMEMS Baltic wave model | CMEMS credentials | 1-h cache |
-| CMEMS Baltic physics (SST, salinity, currents) | CMEMS credentials | 1-h cache |
-| CMEMS Baltic BGC (chlorophyll, oxygen) | CMEMS credentials | 1-h cache |
-| CMEMS static bathymetry | CMEMS credentials | 24-h cache |
-| CDSE OData (satellite overpasses) | CDSE credentials | 1-h cache |
+| Source | Access | Cache TTL |
+|--------|--------|-----------|
+| Open-Meteo (weather + wind) | Free, no auth | 15 min |
+| CMEMS Baltic wave model | CMEMS credentials | 1 h (dataset); 1 h (PNG per hour) |
+| CMEMS Baltic physics (SST, salinity, currents) | CMEMS credentials | 1 h (dataset); 1 h (PNG per hour) |
+| CMEMS Baltic BGC (chlorophyll, oxygen) | CMEMS credentials | 1 h (dataset); 1 h (PNG per hour) |
+| CMEMS static bathymetry | CMEMS credentials | 24 h |
+| CDSE OData (satellite overpasses) | CDSE credentials | 1 h |
 | CDSE Sentinel Hub (imagery) | CDSE credentials | on-demand |
-| CelesTrak TLE (orbital propagation) | Free, no auth | 1-h cache |
-| MeteoAlarm advisories | Free, no auth | 5-min cache |
+| CelesTrak TLE (orbital propagation) | Free, no auth | 1 h |
+| MeteoAlarm advisories | Free, no auth | 5 min |
 | OpenSeaMap | Free, no auth | tile CDN |
 | OpenFreeMap (base map) | Free, no auth | tile CDN |
 

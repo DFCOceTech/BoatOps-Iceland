@@ -2,6 +2,31 @@
 
 Rolling 2-week work log. Remove entries older than 2 weeks.
 
+## 2026-05-21
+
+**Station markers, click assessment, currents units — feature/improvements-may-2026** (user instruction)
+
+- **REQ-MAP-031**: Surface currents legend/metadata units changed from kt to m/s; `MS_TO_KT` constant removed from `CurrentsLayerPanel.tsx`.
+- **REQ-MAP-029**: `StationMarkers.tsx` — toggleable MapLibre markers for MARNET Fehmarnbelt (54.595°N, 11.183°E), Darßer Schwelle (54.700°N, 12.700°E), Oder Bank (54.067°N, 14.152°E) and FINO2 (55.010°N, 13.157°E); dark popup via `utils/popupStyles.ts`.
+- **REQ-MAP-030**: `MapClickPanel.tsx` — crosshair click mode; fetches wave + weather in parallel for clicked point; popup shows Go/No-Go verdict + per-capability rows at active planning hour; AbortController cancels stale fetches.
+- **Sidebar**: `MapClickPanel` inserted below GoNoDashboard; `StationMarkers` inserted after IsobathLayer.
+- **Bug fixed**: `disabled={loading}` on all animated-overlay checkboxes changed to `disabled={loading && !grid/blobUrl}` so overlays can always be unchecked; `toggle()` in `useApiLayers` now aborts in-flight fetches on hide.
+
+**Time-varying oceanographic overlays — feature/improvements-may-2026** (user instruction)
+
+- **REQ-MAP-024–028**: SST, salinity, chlorophyll, currents (quiver + particle animation), and wave height overlays all accept `?hour=N` (0–167) on their API endpoints. Backend fetches the full time-series dataset once per bbox (cached 1 h in `_ds_cache`), then index-selects the right timestep per request.
+- `_hour_to_tidx(ds, hour)`: auto-detects daily vs hourly resolution from the first time-delta; clamps to `[0, n-1]`.
+- Frontend: `useApiLayers(defs, map, hour)` accepts `forecastHour` from TimeContext; `useEffect([hour])` refetches all visible, time-varying layers on slider change. `toggle()` always fetches fresh data on re-enable (fixes stale-blob after slider move while hidden). `raster-fade-duration: 0` prevents crossfade flash between slider steps.
+- `CurrentsLayerPanel` uses `forecastHourRef` inside `fetchGrid`; `useEffect([forecastHour])` triggers refetch when visible.
+- `oceanLayers.ts`: `ApiLayerDef.fetch` is `(hour?) => Promise<BlobResult>`; bathymetry and oxygen have `timeVarying: false`.
+- 6 new tests added (hour param for SST/salinity/currents/chlorophyll; wave overlay PNG + hour); all 72 tests pass.
+
+**Add Sentinel-1 overpass prediction — feature/improvements-may-2026** (user instruction)
+
+- **REQ-SAT-011**: `Sentinel-1A` (NORAD 39634) and `Sentinel-1C` (NORAD 62261) added to `SATELLITE_CATALOG` in `celestrak.py`. `SATELLITE_CATALOG` refactored from `{name: int}` to `{name: {norad, daytime_only}}`. `_predict_passes` accepts `daytime_only` bool; SAR satellites skip the solar-elevation check and return night passes.
+- **Frontend**: `PLATFORM_COLORS` and `ensureTrackLayer` match expression updated to color Sentinel-1 passes green (`#4ade80`). Pre-existing `'Landsat-8'` → `'Landsat 8'` key mismatch fixed.
+- **E2E verified**: `get_overpasses((9.5,53.5,15.0,56.0), days=7)` returns 7 Sentinel-1 passes (1A + 1C) with correct `track_coords`.
+
 ## 2026-05-11
 
 **Improvements batch — feature/improvements-may-2026** (triggered by improvements.md)

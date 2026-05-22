@@ -18,15 +18,32 @@ from boatops.cache import make_cache
 
 _cache, _lock = make_cache(ttl_seconds=3600, maxsize=32)  # 1 h for passes; TLEs ~24 h
 
+# Planetary ephemeris for solar position — loaded lazily (de421.bsp, ~17 MB, cached on disk)
+_eph = None
+
+def _solar_elevation(observer, t) -> float:
+    """Solar elevation in degrees at observer location and time t."""
+    global _eph
+    if _eph is None:
+        _eph = load('de421.bsp')
+    astrometric = (_eph['earth'] + observer).at(t).observe(_eph['sun'])
+    alt, _, _ = astrometric.apparent().altaz()
+    return float(alt.degrees)
+
 _GP_URL = "https://celestrak.org/NORAD/elements/gp.php"
 
-SATELLITE_CATALOG = {
-    "Suomi-NPP (VIIRS)": 37849,
-    "NOAA-20 (VIIRS)": 43013,
-    "Landsat 8": 39084,
-    "Landsat 9": 49260,
-    "Sentinel-2A": 40697,
-    "Sentinel-2B": 42063,
+# daytime_only=False: SAR sensors work at night; daytime_only=True: optical sensors need sunlit ground
+SATELLITE_CATALOG: dict[str, dict] = {
+    "Sentinel-1A":        {"norad": 39634, "daytime_only": False},
+    "Sentinel-1C":        {"norad": 62261, "daytime_only": False},
+    "Sentinel-2A":        {"norad": 40697, "daytime_only": True},
+    "Sentinel-2B":        {"norad": 42063, "daytime_only": True},
+    "Sentinel-3A":        {"norad": 41335, "daytime_only": True},
+    "Sentinel-3B":        {"norad": 43437, "daytime_only": True},
+    "Suomi-NPP (VIIRS)":  {"norad": 37849, "daytime_only": True},
+    "NOAA-20 (VIIRS)":    {"norad": 43013, "daytime_only": True},
+    "Landsat 8":          {"norad": 39084, "daytime_only": True},
+    "Landsat 9":          {"norad": 49260, "daytime_only": True},
 }
 
 _ts = load.timescale()
@@ -48,6 +65,7 @@ def _predict_passes(
     t_end,
     aoi_poly,
     platform_name: str,
+    daytime_only: bool = True,
 ) -> list[dict]:
     try:
         times, events = satellite.find_events(observer, t_start, t_end, altitude_degrees=0.0)
@@ -90,6 +108,13 @@ def _predict_passes(
         else:
             peak_elev = float("nan")
 
+        # Skip nighttime passes for optical sensors (SAR platforms skip this check)
+        if daytime_only:
+            mid_t = _ts.tt_jd((aos_t.tt + los_t.tt) / 2)
+            if _solar_elevation(observer, mid_t) < 0.0:
+                i = j + 1
+                continue
+
         aos_dt = aos_t.utc_datetime()
         los_dt = los_t.utc_datetime()
         track_coords = [
@@ -123,11 +148,11 @@ def get_overpasses(bbox: tuple, days: int = 7) -> list[dict]:
     t_end = _ts.from_datetime(now + timedelta(days=days))
 
     all_passes = []
-    for name, norad_id in SATELLITE_CATALOG.items():
+    for name, info in SATELLITE_CATALOG.items():
         try:
-            _, line1, line2 = _fetch_tle(norad_id)
+            _, line1, line2 = _fetch_tle(info["norad"])
             sat = EarthSatellite(line1, line2, name, _ts)
-            passes = _predict_passes(sat, observer, t_start, t_end, aoi_poly, name)
+            passes = _predict_passes(sat, observer, t_start, t_end, aoi_poly, name, info["daytime_only"])
             all_passes.extend(passes)
         except Exception:
             continue  # skip platform if TLE unavailable

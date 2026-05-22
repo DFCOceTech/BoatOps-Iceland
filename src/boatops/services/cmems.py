@@ -2,6 +2,12 @@
 
 All ``open_dataset`` calls are synchronous (copernicusmarine is not async-native).
 Route handlers should call these from sync endpoints or via run_in_threadpool.
+
+Time-varying overlays (SST, salinity, chlorophyll, currents, waves) accept an
+optional ``hour`` parameter (0–167).  Raw xarray datasets are cached in
+``_ds_cache`` so that the first toggle triggers one CMEMS download; subsequent
+slider steps render from the in-memory dataset in ~50 ms.  This mirrors the
+wind-grid pattern in openmeteo.py.
 """
 from datetime import datetime, timezone
 
@@ -16,10 +22,11 @@ from matplotlib.colors import LogNorm
 from boatops.cache import make_cache
 from boatops.utils.raster import to_png_bytes, to_quiver_png_bytes
 
-_cache, _lock               = make_cache(ttl_seconds=3600)   # 1 h  — oceanographic layers
-_bathy_cache, _bathy_lock   = make_cache(ttl_seconds=86400)  # 24 h — static bathymetry PNG
-_isobath_cache, _isobath_lock = make_cache(ttl_seconds=86400)  # 24 h — isobath GeoJSON
-_grid_cache, _grid_lock     = make_cache(ttl_seconds=3600)   # 1 h  — current vector grids
+_cache, _lock               = make_cache(ttl_seconds=3600)    # 1 h — rendered PNG overlays
+_bathy_cache, _bathy_lock   = make_cache(ttl_seconds=86400)   # 24 h — static bathymetry PNG
+_isobath_cache, _isobath_lock = make_cache(ttl_seconds=86400) # 24 h — isobath GeoJSON
+_grid_cache, _grid_lock     = make_cache(ttl_seconds=3600)    # 1 h — current vector grids
+_ds_cache, _ds_lock         = make_cache(ttl_seconds=3600, maxsize=16)  # raw xarray datasets
 
 
 def _overlay_key(prefix: str):
@@ -51,6 +58,25 @@ def _t_idx(ds) -> int:
     return int(np.argmin(np.abs(pd.to_datetime(ds.time.values) - _now_naive())))
 
 
+def _hour_to_tidx(ds, hour: int | None) -> int:
+    """Convert a forecast-hour offset to the nearest available time index.
+
+    Detects dataset resolution from the first timestep gap:
+      ≥ 20 h gap → daily model  → step_idx = round(hour / delta_h)
+      <  20 h gap → hourly model → step_idx = hour
+    Result is clamped to [0, n-1].  Falls back to nearest-to-now when hour=None.
+    """
+    if hour is None:
+        return _t_idx(ds)
+    times = pd.to_datetime(ds.time.values)
+    n = len(times)
+    if n <= 1:
+        return 0
+    delta_h = (times[1] - times[0]).total_seconds() / 3600
+    step_idx = int(round(hour / delta_h)) if delta_h >= 20 else hour
+    return max(0, min(step_idx, n - 1))
+
+
 def _nearest_wet_cell(ds, lat: float, lon: float, var: str) -> tuple[float, float]:
     """Return (lat, lon) of the nearest non-NaN grid cell for the given variable."""
     arr = ds[var]
@@ -66,6 +92,52 @@ def _nearest_wet_cell(ds, lat: float, lon: float, var: str) -> tuple[float, floa
     return (
         float(ds.latitude.values[flat // len(ds.longitude)]),
         float(ds.longitude.values[flat % len(ds.longitude)]),
+    )
+
+
+# ── raw dataset fetchers (cached by bbox, TTL = 1 h) ─────────────────────────
+# Each fetcher downloads the full available time series so slider steps never
+# trigger a second CMEMS call for the same bbox.
+
+@cachetools.cached(cache=_ds_cache, lock=_ds_lock, key=_overlay_key('sst_ds'))
+def _fetch_sst_ds(bbox: tuple):
+    west, south, east, north = bbox
+    return copernicusmarine.open_dataset(
+        dataset_id=SST_DATASET, variables=["analysed_sst"],
+        minimum_longitude=west, maximum_longitude=east,
+        minimum_latitude=south, maximum_latitude=north,
+    )
+
+
+@cachetools.cached(cache=_ds_cache, lock=_ds_lock, key=_overlay_key('phy_ds'))
+def _fetch_phy_ds(bbox: tuple):
+    """PHY dataset: surface salinity (so), currents (uo, vo) — shared by 3 overlays."""
+    west, south, east, north = bbox
+    return copernicusmarine.open_dataset(
+        dataset_id=PHY_DATASET, variables=["so", "uo", "vo"],
+        minimum_longitude=west, maximum_longitude=east,
+        minimum_latitude=south, maximum_latitude=north,
+        minimum_depth=0.0, maximum_depth=2.0,
+    )
+
+
+@cachetools.cached(cache=_ds_cache, lock=_ds_lock, key=_overlay_key('bgc_ds'))
+def _fetch_bgc_ds(bbox: tuple):
+    west, south, east, north = bbox
+    return copernicusmarine.open_dataset(
+        dataset_id=BGC_DATASET, variables=["chl"],
+        minimum_longitude=west, maximum_longitude=east,
+        minimum_latitude=south, maximum_latitude=north,
+    )
+
+
+@cachetools.cached(cache=_ds_cache, lock=_ds_lock, key=_overlay_key('wave_ds'))
+def _fetch_wave_ds(bbox: tuple):
+    west, south, east, north = bbox
+    return copernicusmarine.open_dataset(
+        dataset_id=WAVE_DATASET, variables=["VHM0"],
+        minimum_longitude=west, maximum_longitude=east,
+        minimum_latitude=south, maximum_latitude=north,
     )
 
 
@@ -105,24 +177,16 @@ def get_wave_point(lat: float, lon: float) -> dict:
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('wave'))
-def get_wave_overlay(bbox: tuple) -> tuple[bytes, dict]:
-    """Current Hs field as RGBA PNG bytes + metadata dict."""
-    west, south, east, north = bbox
-    ds = copernicusmarine.open_dataset(
-        dataset_id=WAVE_DATASET,
-        variables=["VHM0"],
-        minimum_longitude=west,
-        maximum_longitude=east,
-        minimum_latitude=south,
-        maximum_latitude=north,
-    )
-    ti = _t_idx(ds)
+def get_wave_overlay(bbox: tuple, hour: int | None = None) -> tuple[bytes, dict]:
+    """Hs field as RGBA PNG bytes + metadata dict for the given forecast hour."""
+    ds = _fetch_wave_ds(bbox)
+    ti = _hour_to_tidx(ds, hour)
     hs = ds["VHM0"].isel(time=ti).values.astype(float)
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
 
     vmax = float(np.nanpercentile(hs[~np.isnan(hs)], 99)) if np.any(~np.isnan(hs)) else 2.5
-    vmax = max(vmax, 0.1)   # never collapse to a zero range
+    vmax = max(vmax, 0.1)
     png = to_png_bytes(hs, lats, cmocean.cm.amp, plt.Normalize(vmin=0, vmax=vmax))
     meta = {
         "bbox": list(bbox),
@@ -214,15 +278,10 @@ def get_isobaths(bbox: tuple, depths: tuple = (10, 25, 100)) -> dict:
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('sst'))
-def get_sst_overlay(bbox: tuple) -> tuple[bytes, dict]:
+def get_sst_overlay(bbox: tuple, hour: int | None = None) -> tuple[bytes, dict]:
     """SST L4 (°C) — DMI NRT product, autoscaled to actual data range."""
-    west, south, east, north = bbox
-    ds = copernicusmarine.open_dataset(
-        dataset_id=SST_DATASET, variables=["analysed_sst"],
-        minimum_longitude=west, maximum_longitude=east,
-        minimum_latitude=south, maximum_latitude=north,
-    )
-    ti = _t_idx(ds)
+    ds = _fetch_sst_ds(bbox)
+    ti = _hour_to_tidx(ds, hour)
     sst = ds["analysed_sst"].isel(time=ti).values.astype(float) - 273.15
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
@@ -236,16 +295,10 @@ def get_sst_overlay(bbox: tuple) -> tuple[bytes, dict]:
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('salinity'))
-def get_salinity_overlay(bbox: tuple) -> tuple[bytes, dict]:
+def get_salinity_overlay(bbox: tuple, hour: int | None = None) -> tuple[bytes, dict]:
     """Surface salinity (PSU, depth[0]) — autoscaled to actual data range."""
-    west, south, east, north = bbox
-    ds = copernicusmarine.open_dataset(
-        dataset_id=PHY_DATASET, variables=["so"],
-        minimum_longitude=west, maximum_longitude=east,
-        minimum_latitude=south, maximum_latitude=north,
-        minimum_depth=0.0, maximum_depth=2.0,
-    )
-    ti = _t_idx(ds)
+    ds = _fetch_phy_ds(bbox)
+    ti = _hour_to_tidx(ds, hour)
     sal = ds["so"].isel(time=ti, depth=0).values.astype(float)
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
@@ -259,7 +312,7 @@ def get_salinity_overlay(bbox: tuple) -> tuple[bytes, dict]:
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('currents'))
-def get_currents_overlay(bbox: tuple) -> tuple[bytes, dict]:
+def get_currents_overlay(bbox: tuple, hour: int | None = None) -> tuple[bytes, dict]:
     """Surface current quiver (depth[0]) — autoscaled, hard cap 1.5 m/s.
 
     CMEMS model output can contain fill-value artefacts near land/boundaries
@@ -267,14 +320,8 @@ def get_currents_overlay(bbox: tuple) -> tuple[bytes, dict]:
     percentile and capping at 1.5 m/s gives a physically realistic scale
     (Baltic surface currents are typically 0–0.5 m/s, seldom exceed 1 m/s).
     """
-    west, south, east, north = bbox
-    ds = copernicusmarine.open_dataset(
-        dataset_id=PHY_DATASET, variables=["uo", "vo"],
-        minimum_longitude=west, maximum_longitude=east,
-        minimum_latitude=south, maximum_latitude=north,
-        minimum_depth=0.0, maximum_depth=2.0,
-    )
-    ti = _t_idx(ds)
+    ds = _fetch_phy_ds(bbox)
+    ti = _hour_to_tidx(ds, hour)
     u = ds["uo"].isel(time=ti, depth=0).values.astype(float)
     v = ds["vo"].isel(time=ti, depth=0).values.astype(float)
     lats = ds.latitude.values
@@ -294,15 +341,10 @@ def get_currents_overlay(bbox: tuple) -> tuple[bytes, dict]:
 
 
 @cachetools.cached(cache=_cache, lock=_lock, key=_overlay_key('chlorophyll'))
-def get_chlorophyll_overlay(bbox: tuple) -> tuple[bytes, dict]:
+def get_chlorophyll_overlay(bbox: tuple, hour: int | None = None) -> tuple[bytes, dict]:
     """Surface chlorophyll-a (mg/m³, depth[0]) — log scale, autoscaled."""
-    west, south, east, north = bbox
-    ds = copernicusmarine.open_dataset(
-        dataset_id=BGC_DATASET, variables=["chl"],
-        minimum_longitude=west, maximum_longitude=east,
-        minimum_latitude=south, maximum_latitude=north,
-    )
-    ti = _t_idx(ds)
+    ds = _fetch_bgc_ds(bbox)
+    ti = _hour_to_tidx(ds, hour)
     chl = ds["chl"].isel(time=ti, depth=0).values.astype(float)
     lats = ds.latitude.values
     timestamp = str(ds.time.values[ti])[:16]
@@ -343,6 +385,7 @@ def get_oxygen_overlay(bbox: tuple) -> tuple[bytes, dict]:
 def get_currents_grid(
     west: float, south: float, east: float, north: float,
     step: float = 0.25,
+    hour: int | None = None,
 ) -> dict:
     """Surface current U/V components on a regular grid for particle animation.
 
@@ -353,13 +396,9 @@ def get_currents_grid(
     vmax_speed uses the 99.5th percentile + 1.5 m/s physical cap (same logic
     as get_currents_overlay) to protect against fill-value artefacts.
     """
-    ds = copernicusmarine.open_dataset(
-        dataset_id=PHY_DATASET, variables=["uo", "vo"],
-        minimum_longitude=west, maximum_longitude=east,
-        minimum_latitude=south, maximum_latitude=north,
-        minimum_depth=0.0, maximum_depth=2.0,
-    )
-    ti = _t_idx(ds)
+    bbox = (west, south, east, north)
+    ds = _fetch_phy_ds(bbox)
+    ti = _hour_to_tidx(ds, hour)
     u_da = ds["uo"].isel(time=ti, depth=0)
     v_da = ds["vo"].isel(time=ti, depth=0)
 

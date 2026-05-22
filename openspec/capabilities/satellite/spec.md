@@ -1,14 +1,17 @@
 # Satellite — Specification
 
-> Version: 1.0 | Status: Draft | Last updated: 2026-05-01
+> Version: 1.1 | Status: Draft | Last updated: 2026-05-13
 
 ## Purpose
 
 Predict satellite overpasses for a user-defined AOI and planning window, and retrieve the most recent cloud-free Sentinel-2 Level-2A imagery for the AOI. Supports coordination of Blue Boat surveys with optical satellite passes for co-located data collection.
 
-Platforms covered: Sentinel-2 A/B, Sentinel-3 A/B, Landsat 8/9, VIIRS (Suomi-NPP, NOAA-20).
+Platforms covered: Sentinel-1 A/C, Sentinel-2 A/B, Sentinel-3 A/B, Landsat 8/9, VIIRS (Suomi-NPP, NOAA-20).
 
 ## Functional Requirements
+
+### REQ-SAT-011: Sentinel-1 Overpass Prediction
+The system SHALL predict overpass windows for Sentinel-1A (NORAD 39634) and Sentinel-1C (NORAD 62261) using CelesTrak TLE data and skyfield orbital propagation, returning the same fields as other TLE-based platforms. Because Sentinel-1 carries a SAR sensor, the daytime-only filter SHALL NOT apply — nighttime passes SHALL be returned.
 
 ### REQ-SAT-001: Sentinel-2 Overpass Prediction
 The system SHALL query the CDSE OData API for upcoming Sentinel-2 A and B acquisitions overlapping the AOI within the planning window. For each acquisition, the system SHALL return: platform, pass start/end time (UTC), footprint geometry, estimated cloud cover at pass time (from WX-04), and solar elevation at pass time (from SOL-03).
@@ -34,10 +37,18 @@ The system SHALL render the ground track of each predicted overpass as a vector 
 ### REQ-SAT-009: Pass Selection Sets Planning Time
 Clicking a satellite pass row in the overpass table SHALL set the global planning time context to that pass's AOS time. This SHALL cause all time-sensitive panels (weather, waves) to display conditions for that forecast hour.
 
+### REQ-SAT-010: Daytime-Only Overpass Filter
+The system SHALL exclude satellite overpasses that occur during nighttime. A pass is nighttime if the solar elevation at the midpoint of the pass window (AOS + LOS)/2 is below 0° at the AOI centre. Solar position SHALL be computed using a planetary ephemeris (de421.bsp via skyfield). Only optically useful passes (sunlit ground) SHALL be returned.
+
 ### REQ-SAT-007: Imagery Metadata Display
 The system SHALL return image metadata (acquisition date, cloud cover %, scene ID, tile grid reference) for display in the layer panel alongside the imagery.
 
 ## Acceptance Scenarios
+
+### SCENARIO-SAT-S1-001: Sentinel-1 overpasses returned for Baltic AOI including nighttime passes
+**GIVEN** current TLE data for Sentinel-1A (NORAD 39634) and Sentinel-1C (NORAD 62261) from CelesTrak and a 7-day planning window over the Baltic AOI `[9.5, 53.5, 15.0, 56.0]`  
+**WHEN** `get_overpasses()` is called  
+**THEN** the response contains ≥1 pass from Sentinel-1A or Sentinel-1C with: platform name, AOS/LOS times UTC, max elevation, duration, and track_coords polyline intersecting the AOI; passes occurring during nighttime SHALL be included (daytime_only=False for SAR)
 
 ### SCENARIO-SAT-S2-001: Sentinel-2 overpasses returned for Baltic AOI
 **GIVEN** a bounding box covering the German Baltic coast (`[9.5, 53.5, 15.0, 56.0]`) and a 10-day planning window  
@@ -64,6 +75,11 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 **WHEN** the "Show satellite tracks" toggle is enabled  
 **THEN** ground track LineStrings are drawn on the map, one per pass, colour-coded by platform; tracks intersect the Baltic AOI bbox
 
+### SCENARIO-SAT-DAYTIME-001: Nighttime passes are excluded
+**GIVEN** CelesTrak TLE data for Suomi-NPP and a 7-day planning window over the Baltic AOI  
+**WHEN** `get_overpasses()` is called  
+**THEN** all returned passes have solar elevation ≥ 0° at the AOI centre at pass midpoint; no nighttime passes appear in the list
+
 ### SCENARIO-SAT-FAIL-001: CDSE unavailable returns structured error
 **GIVEN** CDSE API is unreachable (simulated)  
 **WHEN** the satellite endpoint is called  
@@ -85,7 +101,7 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 | Overpass list | list of dicts | platform, start_utc, end_utc, footprint (GeoJSON), cloud_cover_pct, solar_elevation_deg |
 | Best Sentinel-2 scene | dict | scene_id, acquisition_date, cloud_cover_pct, wms_url, tile_grid_ref |
 
-## Implementation Status (2026-05-03)
+## Implementation Status (2026-05-13)
 
 **Status**: Implemented (Phase 1 + Phase 2 + Phase 3 complete)
 
@@ -117,9 +133,13 @@ The system SHALL return image metadata (acquisition date, cloud cover %, scene I
 - **REQ-SAT-008** ✅ Ground track overlay — `celestrak.py` now returns `track_coords: [[lon, lat], ...]` in each pass dict; `SatellitePanel.tsx` adds GeoJSON LineString layer on map via `addTrackLayer()`; colour-coded by platform; toggle checkbox
 - **REQ-SAT-009** ✅ Pass click → planning time — `handlePassClick` in `SatellitePanel` computes hour offset from AOS and calls `setForecastHour()`; all time-sensitive panels update
 
+### 2026-05-21 Additions
+- **REQ-SAT-011** ✅ Sentinel-1 overpass prediction — `Sentinel-1A` (NORAD 39634) and `Sentinel-1C` (NORAD 62261) added to `SATELLITE_CATALOG` with `daytime_only=False`; SAR sensor operates day/night. `SATELLITE_CATALOG` refactored from `{name: int}` to `{name: {norad, daytime_only}}` dict; `_predict_passes` accepts `daytime_only` bool; frontend color `#4ade80` (green) added to `PLATFORM_COLORS` and MapLibre `match` expression.
+
+### 2026-05-13 Additions
+- **REQ-SAT-010** ✅ Daytime-only filter — `_solar_elevation(observer, t)` in `celestrak.py` uses `de421.bsp` (skyfield planetary ephemeris, cached on disk) to compute solar altitude; passes with solar elevation < 0° at pass midpoint are discarded before appending to results
+- **REQ-SAT-002** ✅ Sentinel-3 overpass prediction — `Sentinel-3A` (NORAD 41335) and `Sentinel-3B` (NORAD 43437) added to `SATELLITE_CATALOG`; TLE propagation identical to other platforms; frontend already colour-coded purple (`#818cf8`)
+
 ### Deferred
 - Sentinel-3 overpass TLE prediction (CDSE OData historical only in notebook)
-- Per-pass midpass solar elevation: `Overpass` schema has no `midpass_solar_elevation_deg` field; frontend uses daytime-pass proxy (AOS between sunrise/sunset) as an approximation
-
-### Phase 3 Deviations
-- "Optimal passes" AC requires solar elevation at midpass > 20°. Backend `Overpass` type does not include midpass solar elevation. Implemented as: satellite max elevation ≥ 20° shown in green (different quantity); today's passes with AOS in sunrise–sunset window highlighted (daylight proxy). Backend schema extension deferred to S03-06 or a future backend story.
+- "Optimal passes" midpass solar elevation > 20°: still approximated by satellite max elevation ≥ 20° in frontend; REQ-SAT-010 now guarantees sun-above-horizon but does not expose the elevation value in the API response

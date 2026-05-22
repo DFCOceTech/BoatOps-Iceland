@@ -29,9 +29,9 @@ function toLocalDayTime(isoUtc: string): string {
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
-  'Sentinel-2': '#38bdf8', 'Sentinel-3': '#818cf8',
+  'Sentinel-1': '#4ade80', 'Sentinel-2': '#38bdf8', 'Sentinel-3': '#818cf8',
   'SNPP': '#a78bfa', 'NOAA-20': '#c084fc',
-  'Landsat-8': '#fb923c', 'Landsat-9': '#f97316',
+  'Landsat 8': '#fb923c', 'Landsat 9': '#f97316',
 }
 
 function platformColor(platform: string): string {
@@ -101,6 +101,7 @@ function ensureTrackLayer(map: maplibregl.Map, passes: Overpass[]) {
       paint: {
         'line-color': [
           'match', ['get', 'platform'],
+          'Sentinel-1A', '#4ade80', 'Sentinel-1C', '#4ade80',
           'Sentinel-2A', '#38bdf8', 'Sentinel-2B', '#38bdf8',
           'Sentinel-3A', '#818cf8', 'Sentinel-3B', '#818cf8',
           'Landsat 8', '#fb923c', 'Landsat 9', '#f97316',

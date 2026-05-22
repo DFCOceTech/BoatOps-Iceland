@@ -100,9 +100,10 @@ export const getWindGrid = (bbox = AOI, hour?: number) =>
     (hour !== undefined ? `&hour=${hour}` : '')
   )
 
-export const getCurrentsGrid = (bbox = AOI) =>
+export const getCurrentsGrid = (bbox = AOI, hour?: number) =>
   fetchJson<WindGrid>(
-    `/api/map/currents-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
+    `/api/map/currents-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
+    (hour !== undefined ? `&hour=${hour}` : '')
   )
 
 // ── /api/waves ───────────────────────────────────────────────────────────────
@@ -116,8 +117,11 @@ export interface WaveForecast {
 export const getWaveForecast = (lat = CENTER.lat, lon = CENTER.lon) =>
   fetchJson<WaveForecast>(`/api/waves/forecast?lat=${lat}&lon=${lon}`)
 
-export const getWaveOverlay = (bbox = AOI) =>
-  fetchPng(`/api/waves/overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`)
+export const getWaveOverlay = (bbox = AOI, hour?: number) =>
+  fetchPng(
+    `/api/waves/overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
+    (hour !== undefined ? `&hour=${hour}` : '')
+  )
 
 // ── /api/solar ───────────────────────────────────────────────────────────────
 
@@ -198,9 +202,11 @@ export const getIsobaths = (bbox = AOI) =>
     properties: { depth_m: number }
   }> }>(`/api/map/isobaths?${bboxQs(bbox)}`)
 
-export const getBathymetry  = (bbox = AOI) => fetchPng(`/api/map/bathymetry?${bboxQs(bbox)}`)
-export const getSst         = (bbox = AOI) => fetchPng(`/api/map/sst?${bboxQs(bbox)}`)
-export const getSalinity    = (bbox = AOI) => fetchPng(`/api/map/salinity?${bboxQs(bbox)}`)
-export const getCurrents    = (bbox = AOI) => fetchPng(`/api/map/currents?${bboxQs(bbox)}`)
-export const getChlorophyll = (bbox = AOI) => fetchPng(`/api/map/chlorophyll?${bboxQs(bbox)}`)
-export const getOxygen      = (bbox = AOI) => fetchPng(`/api/map/oxygen?${bboxQs(bbox)}`)
+const hourQs = (hour?: number) => (hour !== undefined ? `&hour=${hour}` : '')
+
+export const getBathymetry  = (bbox = AOI)              => fetchPng(`/api/map/bathymetry?${bboxQs(bbox)}`)
+export const getSst         = (bbox = AOI, hour?: number) => fetchPng(`/api/map/sst?${bboxQs(bbox)}${hourQs(hour)}`)
+export const getSalinity    = (bbox = AOI, hour?: number) => fetchPng(`/api/map/salinity?${bboxQs(bbox)}${hourQs(hour)}`)
+export const getCurrents    = (bbox = AOI, hour?: number) => fetchPng(`/api/map/currents?${bboxQs(bbox)}${hourQs(hour)}`)
+export const getChlorophyll = (bbox = AOI, hour?: number) => fetchPng(`/api/map/chlorophyll?${bboxQs(bbox)}${hourQs(hour)}`)
+export const getOxygen      = (bbox = AOI)              => fetchPng(`/api/map/oxygen?${bboxQs(bbox)}`)

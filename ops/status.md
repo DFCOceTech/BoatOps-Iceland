@@ -1,6 +1,6 @@
 # Operational Status — BoatOps
 
-> Last updated: 2026-05-11
+> Last updated: 2026-05-21
 
 ## Session Handoff Protocol (MANDATORY)
 
@@ -43,6 +43,13 @@ All 6 stories done:
 
 **To start the frontend dev server:** `cd frontend && npm run dev` → http://localhost:5173
 
+## 2026-05-21 Additions
+- **Sentinel-1 overpass prediction**: `SATELLITE_CATALOG` now includes `Sentinel-1A` (NORAD 39634) and `Sentinel-1C` (NORAD 62261) with `daytime_only=False` — SAR sensor, valid day and night. Frontend shows them in green (#4ade80) in the overpass table group headers and map track layer.
+- **Station markers**: MARNET Fehmarnbelt/Darßer Schwelle/Oder Bank + FINO2 — toggleable MapLibre markers with dark popup showing name, coordinates, station type.
+- **Map-click Go/No-Go assessment**: Crosshair mode in sidebar fetches wave Hs + wind/gusts at the clicked location for the active planning hour; popup shows colour-coded verdict using configured thresholds.
+- **Surface currents units**: Legend and metadata now show m/s throughout.
+- **Time-varying oceanographic overlays**: SST, salinity, chlorophyll, currents (quiver + particle), and wave height overlays now respond to the global forecast-hour slider. Waves update every hour (CMEMS hourly); SST/salinity/chlorophyll/currents update once per day (CMEMS daily model). Raw xarray datasets cached per bbox; PNG rendered per (bbox, hour) in ~50 ms without re-downloading from CMEMS.
+
 ## Known Issues / Deferred
 
 - **Live API E2E**: Tests mock all API calls; actual CMEMS/CDSE data path not verified in E2E. Requires live credentials + running backend.
@@ -58,12 +65,12 @@ Phase 4 options (no epic scoped yet):
 1. **FR-16 AI synthesis** — Claude API integration for Go/No-Go reasoning with risk factors and optimal time windows
 2. **AOI draw tool** — FR-01 time picker + user-drawn AOI polygon; passes center/bbox to all API calls
 3. **NFR-01 load test** — multi-user concurrent sessions; currently untested
-4. **Isobath map layer** — `GET /api/map/isobaths` data served but not yet rendered as MapLibre vector line layers in the frontend
-5. **E2E coverage for new features** — Playwright tests for TimeSlider, satellite track toggle, isobath layer, dark basemap, wind m/s display
+4. **E2E coverage for new features** — Playwright tests for TimeSlider, satellite track toggle, isobath layer, GBIF layers, EMODnet popup, wind m/s display
 
 ## Recently Closed
 
-- 2026-05-11: **Improvements batch ✅** (feature/improvements-may-2026) — dark vector basemap, seamark +20%, isobath API, wind in m/s, wind vmax cap 20 m/s, 7-day time slider, satellite ground tracks + click-to-time
+- 2026-05-13: **Satellite daytime filter ✅** — `_solar_elevation()` in `celestrak.py` uses de421.bsp (skyfield) to discard nighttime passes; ~12 daytime passes per 7-day Baltic window
+- 2026-05-11: **Improvements batch ✅** (feature/improvements-may-2026) — dark vector basemap, seamark +20%, isobath API + frontend layer, wind in m/s, wind vmax cap 20 m/s, 7-day time slider, satellite ground tracks + click-to-time, EMODnet click-to-info popup, GBIF biological layers (Zostera marina + Fucus vesiculosus)
 - 2026-05-03: **Production deployment ✅** — Docker Compose; `docker compose up -d` starts the full stack at port 80
 - 2026-05-03: **Epic 03 ✅ complete** — all 6 Phase 3 frontend stories done (S03-01 through S03-06)
 - 2026-05-03: **Epic 02 ✅ complete** — all 6 Phase 2 backend stories done; 60 tests passing
