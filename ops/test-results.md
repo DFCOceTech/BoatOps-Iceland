@@ -3,9 +3,9 @@
 ## 2026-10-25
 | Suite | Result |
 |-------|--------|
-| `pytest tests` (conda `boatops-iceland`) | 86 passed |
+| `pytest tests` (conda `boatops-iceland`) | 91 passed |
 | `npm run build` (tsc -b + vite) | OK |
-| Playwright, chromium (mocked API) | 37 passed (incl. 7 GeoTIFF, 3 local-conditions) |
+| Playwright, chromium (mocked API) | 37 passed (incl. 7 GeoTIFF, 3 local-conditions; error-state assertion added after review) |
 | Playwright, firefox/webkit | automated run failed to launch browsers on the authoring machine; **manual Firefox testing by the project owner** passed for all features tried (work site, weather, tides, S1/S2 imagery, overpasses). Safari/WebKit untested |
 | Live backend smoke (uvicorn :8765) | `/health`, weather, marine, solar, wind-grid, advisories(IS), overpasses → 200; s1-overlay without credentials → 503; oversized bbox → 422 |
 | Docker compose build/run | **not run** (Docker not installed) |

@@ -266,6 +266,8 @@ test.describe('E2E-014: Local conditions (REQ-IS-12)', () => {
     await mockApis(page)
     await page.route('**/api/stations/nearby**', r => r.fulfill({ status: 502, body: 'x' }))
     await page.goto('/')
+    await expect(page.getByTestId('station-error')).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByTestId('station-row')).toHaveCount(0)
     await scrollToSection(page, 'Tide')
     await expect(page.getByText(/Sea level now/)).toBeVisible({ timeout: 8_000 })
   })

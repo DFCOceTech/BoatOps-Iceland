@@ -10,6 +10,7 @@ from boatops.main import app
 from boatops.services import vedur
 
 client = TestClient(app)
+_REAL_LATEST = vedur._latest  # the autouse fixture below replaces vedur._latest
 
 STATIONS = [
     {"station": 5316, "name": "Kvísker", "owner": "Veðurstofa Íslands", "lat": 63.9, "lon": -16.4, "ele": 20},
@@ -53,7 +54,8 @@ def test_endpoint_ok_and_radius_filter():
 
 
 @pytest.mark.parametrize("q", ["lat=123&lon=-16", "lat=64&lon=-16&radius_km=1", "lat=64&lon=-16&radius_km=999",
-                               "lat=nan&lon=-16"])
+                               "lat=nan&lon=-16", "lat=64&lon=-16&radius_km=nan",
+                               "lat=64&lon=-16&radius_km=inf"])
 def test_bad_input_422(q):
     assert client.get(f"/api/stations/nearby?{q}").status_code == 422
 
@@ -61,3 +63,31 @@ def test_bad_input_422(q):
 def test_upstream_failure_502():
     with patch.object(vedur, "_latest", side_effect=httpx.ConnectError("down")):
         assert client.get("/api/stations/nearby?lat=64&lon=-16").status_code == 502
+
+
+def test_empty_upstream_not_cached():
+    """A transient empty reply must not hide every station for the cache TTL."""
+    class R:
+        def __init__(self, data): self._d = data
+        def raise_for_status(self): pass
+        def json(self): return self._d
+    vedur._obs_cache.clear()
+    with patch("httpx.get") as g:
+        g.return_value = R([])
+        assert _REAL_LATEST() == {}
+        g.return_value = R([{"station": 1, "time": "2026-10-25T16:00:00", "t": 1}])
+        assert 1 in _REAL_LATEST()
+
+
+def test_malformed_payload_is_502():
+    with patch.object(vedur, "_latest", side_effect=ValueError("unexpected observations payload")):
+        assert client.get("/api/stations/nearby?lat=64&lon=-16").status_code == 502
+
+
+def test_non_list_payload_rejected():
+    class R:
+        def raise_for_status(self): pass
+        def json(self): return {"oops": 1}
+    vedur._obs_cache.clear()
+    with patch("httpx.get", return_value=R()), pytest.raises(ValueError):
+        _REAL_LATEST()

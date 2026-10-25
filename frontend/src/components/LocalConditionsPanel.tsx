@@ -15,6 +15,7 @@ const S: Record<string, React.CSSProperties> = {
 }
 
 const STALE_MIN = 60
+const REFRESH_MS = 5 * 60_000
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 const compass = (deg: number) => COMPASS[Math.round(deg / 45) % 8]
 const fmt = (v: number | null, dp = 0, u = '') => v == null ? '—' : `${v.toFixed(dp)}${u}`
@@ -26,6 +27,13 @@ export default function LocalConditionsPanel() {
   const { active } = useSite()
   const { map } = useMapContext()
   const st = useFetch(() => getNearbyStations(active.lat, active.lon))
+  const { refetch } = st
+
+  // Observations are 10-min data: refresh every 5 min so the panel and STALE flags stay current.
+  useEffect(() => {
+    const id = window.setInterval(refetch, REFRESH_MS)
+    return () => window.clearInterval(id)
+  }, [refetch])
 
   // One orange square per station; the panel is re-keyed per site, so cleanup clears them.
   useEffect(() => {
@@ -54,8 +62,8 @@ export default function LocalConditionsPanel() {
     <section style={S.section}>
       <p style={S.heading}>Local Conditions (nearest stations)</p>
       <div style={S.card}>
-        {st.loading && <div style={S.line}>Loading…</div>}
-        {st.error && <div style={{ ...S.line, color: '#f87171' }}>{st.error}</div>}
+        {st.loading && !st.data && <div style={S.line}>Loading…</div>}
+        {st.error && <div data-testid="station-error" style={{ ...S.line, color: '#f87171' }}>{st.error}</div>}
         {st.data && st.data.stations.length === 0 && (
           <div style={S.line}>No automatic stations with a current reading within 60 km.</div>
         )}

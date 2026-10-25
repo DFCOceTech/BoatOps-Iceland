@@ -7,7 +7,6 @@ Units: temperature °C, wind m/s, pressure hPa, humidity %, precipitation mm/h (
 import math
 from datetime import datetime, timezone
 
-import cachetools
 import httpx
 
 from boatops.cache import make_cache
@@ -20,19 +19,42 @@ _obs_cache, _obs_lock = make_cache(ttl_seconds=120, maxsize=2)
 _FIELDS = ("t", "f", "fg", "d", "d_txt", "p", "rh", "r")
 
 
-@cachetools.cached(cache=_stations_cache, lock=_stations_lock, key=lambda: "stations")
+def _rows(resp: httpx.Response, what: str) -> list[dict]:
+    data = resp.json()
+    if not isinstance(data, list):
+        raise ValueError(f"unexpected {what} payload")
+    return [x for x in data if isinstance(x, dict) and isinstance(x.get("station"), int)]
+
+
+def _cached(cache, lock, fetch):
+    """Cache only non-empty results, so a transient empty upstream reply is retried."""
+    with lock:
+        if "k" in cache:
+            return cache["k"]
+    val = fetch()
+    if val:
+        with lock:
+            cache["k"] = val
+    return val
+
+
 def _stations() -> list[dict]:
-    r = httpx.get(f"{_BASE}/stations", params={"active": "true", "station_type": "sj"},
-                  headers=_HEADERS, timeout=20)
-    r.raise_for_status()
-    return r.json()
+    # station_type=sj is IMO's code for automatic stations; every station in the live
+    # observation feed has this type (checked 2026-10-25), including Vegagerðin ones.
+    def fetch():
+        r = httpx.get(f"{_BASE}/stations", params={"active": "true", "station_type": "sj"},
+                      headers=_HEADERS, timeout=20)
+        r.raise_for_status()
+        return [s for s in _rows(r, "stations") if isinstance(s.get("name"), str)]
+    return _cached(_stations_cache, _stations_lock, fetch)
 
 
-@cachetools.cached(cache=_obs_cache, lock=_obs_lock, key=lambda: "obs")
 def _latest() -> dict[int, dict]:
-    r = httpx.get(f"{_BASE}/observations/aws/10min/latest", headers=_HEADERS, timeout=20)
-    r.raise_for_status()
-    return {o["station"]: o for o in r.json()}
+    def fetch():
+        r = httpx.get(f"{_BASE}/observations/aws/10min/latest", headers=_HEADERS, timeout=20)
+        r.raise_for_status()
+        return {o["station"]: o for o in _rows(r, "observations")}
+    return _cached(_obs_cache, _obs_lock, fetch)
 
 
 def _dist_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> tuple[float, float]:

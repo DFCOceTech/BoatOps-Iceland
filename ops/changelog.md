@@ -173,5 +173,6 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 ## 2026-10-25 — Local conditions panel (user request: check vedur.is / umferdin.is for AWS)
 - Finding: `api.vedur.is` (open, no key) serves IMO **and** Vegagerðin stations in one feed; 8 stations within 50 km of the lagoon (nearest Kvísker 15 km). No separate umferdin.is API needed.
 - Added REQ-IS-12, `services/vedur.py`, `routers/stations.py` (`/api/stations/nearby`), `LocalConditionsPanel`, pytest (7) and Playwright E2E-014 (2). Live call verified against the real API.
-- Not run: adversarial subagent review (small, read-only feature); Firefox/WebKit automation.
+- Firefox/WebKit automation not run (manual Firefox check pending).
 - Follow-up (user request): map markers (amber squares, popup with latest reading, dimmed when stale) for each station; E2E-014 now 3 tests, Chromium 37 passed.
+- Adversarial review (Raze, run after PR #1 opened): no critical defects. Fixed: SCENARIO-IS-12c test now asserts the visible error; empty upstream replies no longer cached 24 h; non-list/malformed payloads → 502 (was a possible 500); `radius_km=nan/inf` → 422; panel auto-refreshes every 5 min (was static). Verified: all reporting stations are IMO type `sj`, so the filter drops none. Not done: Playwright/ruff run by reviewer (I ran them: 91 pytest, 37 Chromium).
