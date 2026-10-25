@@ -7,6 +7,7 @@ import SatellitePanel from './SatellitePanel'
 import SitePanel from './SitePanel'
 import ImageryPanel from './ImageryPanel'
 import MarinePanel from './MarinePanel'
+import TidePanel from './TidePanel'
 import { useSite } from '../context/SiteContext'
 import GoNoDashboard from './GoNoDashboard'
 import { GoNoGoProvider } from '../context/GoNoGoContext'
@@ -80,6 +81,7 @@ export default function Sidebar() {
             <WindLayerPanel />
             <WeatherPanel key={`w-${siteKey}`} />
             <MarinePanel key={`m-${siteKey}`} />
+            <TidePanel key={`t-${siteKey}`} />
             <SolarPanel key={`s-${siteKey}`} />
             <ImageryPanel key={`i-${areaKey}`} />
             <SatellitePanel key={`p-${areaKey}`} />

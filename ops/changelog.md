@@ -7,6 +7,7 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 - Forked from BoatOps `fix/docker-build-frontend-shapely`; removed CMEMS Baltic code (waves, currents, SST, salinity, chlorophyll, bathymetry, isobaths), EMODnet, GBIF, MARNET stations, click assessment.
 - Added movable work site (SiteContext/SitePanel; URL hash; saved sites; GeoJSON export), tide/sea-state (Open-Meteo Marine), Sentinel-1 SAR overlay, `days_back` look-back for S1/S2, Iceland Meteoalarm, bbox/grid limits.
 - Fixed overpass prediction to use swath width (agent-initiated: found empty results in live test).
+- 7-day tide panel (TidePanel) and coverage-aware Sentinel-2 selection (user requests).
 - Slimmed Docker/conda envs (no GDAL/xarray/matplotlib); `.env.example` has CDSE only.
 
 ## 2026-05-21

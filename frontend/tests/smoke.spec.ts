@@ -219,6 +219,28 @@ test.describe('E2E-004: Tide panel', () => {
   })
 })
 
+test.describe('E2E-012: 7-day tide panel', () => {
+  test('chart, per-day high/low list and plan-time line render', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await scrollToSection(page, 'Tides')
+    await expect(page.getByText('Tides — 7 day')).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator('.recharts-surface').last()).toBeVisible()
+    // mock is a 12.4 h sinusoid → several highs (▲) and lows (▼) over the horizon
+    await expect(page.getByText(/▲ \d\d:\d\d/).first()).toBeVisible()
+    await expect(page.getByText(/▼ \d\d:\d\d/).first()).toBeVisible()
+  })
+
+  test('tide API failure shows an error and leaves other panels working', async ({ page }) => {
+    await mockApis(page)
+    await page.route('**/api/marine/forecast**', r => r.fulfill({ status: 502, body: 'x' }))
+    await page.goto('/')
+    await scrollToSection(page, 'Tides')
+    await expect(page.getByText(/502/).first()).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText('CAUTION')).toBeVisible()
+  })
+})
+
 test.describe('E2E-010: Work site (Iceland)', () => {
   test('defaults to the lagoon and carries the site in the URL', async ({ page }) => {
     await mockApis(page)

@@ -17,6 +17,7 @@ Drone and blue-boat measurements at Jökulsárlón glacier lagoon. Ice is mobile
 | REQ-IS-06 | `/api/satellite/s1-overlay` returns the latest Sentinel-1 GRD scene (VV/VH, dB-scaled) within `days_back` (1–30) for the bbox; `/api/satellite/s2-overlay` accepts `days_back` (1–90). Scene time is shown in the UI. |
 | REQ-IS-07 | Go/No-Go uses wind, gust, cloud and solar elevation only (no wave criterion); solar thresholds default to 10°/3° for high latitude. |
 | REQ-IS-08 | Meteoalarm advisories default to Iceland (`IS`). No CMEMS credentials are required. |
+| REQ-IS-09 | A "Tides — 7 day" panel plots the site's sea-level curve for the full forecast with per-day high/low times (UTC) and a plan-time marker; it states that heights are an offshore reference, not lagoon level. |
 
 ## Scenarios
 
@@ -27,6 +28,7 @@ Drone and blue-boat measurements at Jökulsárlón glacier lagoon. Ice is mobile
 - **SCENARIO-IS-04a** An oversized imagery bbox returns 422. **04b** An inverted bbox returns 422. **04c** A wind grid over the node cap returns 422.
 - **SCENARIO-IS-05a** Marine forecast returns equal-length `times`/`sea_level_m` arrays. **05b** Out-of-range lat/lon returns 422; upstream failure returns 502.
 - **SCENARIO-IS-06a** S1 overlay returns PNG with `X-Scene-Id`, `X-Acquisition-Time`, `X-Bbox`. **06b** No scene → 404. **06c** No CDSE credentials → 503.
+- **SCENARIO-IS-09a** Given marine data, the panel shows a chart and ▲/▼ high/low entries per day. **09b** On API failure it shows the error and other panels still work.
 - **SCENARIO-IS-07a** With wind 13.6 kt, gust 18.5 kt, cloud 35 %, sun 42° the verdict is CAUTION (cloud amber).
 
 ## Known limitations
