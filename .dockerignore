@@ -17,7 +17,7 @@
 .env.*
 !.env.example
 
-# Development-only directories
+# Development-only directories (frontend/dist is rebuilt inside deploy/Dockerfile.web)
 tests/
 notebooks/
 data/
@@ -25,7 +25,7 @@ figures/
 .venv/
 .conda/
 frontend/node_modules/
-frontend/dist/          # not needed in the API image
+frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
 

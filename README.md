@@ -74,11 +74,8 @@ npm run dev        # http://localhost:5173 (proxies /api/* to :8000)
 ### Docker (production)
 
 ```bash
-# Build frontend first
-cd frontend && npm run build && cd ..
-
-# Start the full stack (FastAPI + nginx)
-docker compose up -d
+# Builds the frontend and API images (no local Node or conda needed), then starts the stack
+docker compose up -d --build
 # App available at http://localhost:80
 ```
 

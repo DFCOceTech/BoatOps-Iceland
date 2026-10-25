@@ -7,6 +7,7 @@ dependencies:
   - numpy
   - xarray
   - netcdf4
+  - shapely        # satellite overpass footprints (celestrak.py)
   - rasterio       # geospatial PNG rendering (GDAL bindings via conda-forge)
   - matplotlib
   - requests
