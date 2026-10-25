@@ -60,6 +60,8 @@ const MOCK_SOLAR_ELEVATION = {
 const MOCK_OVERPASSES = [
   { platform: 'Sentinel-2A', aos_utc: '2026-05-03T09:12:00+00:00',
     los_utc: '2026-05-03T09:22:00+00:00', max_elevation_deg: 67.4, duration_min: 10.2 },
+  { platform: 'SWOT', aos_utc: '2026-05-03T16:31:00+00:00',
+    los_utc: '2026-05-03T16:44:00+00:00', max_elevation_deg: 55.0, duration_min: 13.0 },
   { platform: 'Landsat-9', aos_utc: '2026-05-03T14:05:00+00:00',
     los_utc: '2026-05-03T14:14:00+00:00', max_elevation_deg: 41.8, duration_min: 8.7 },
 ]
@@ -89,6 +91,14 @@ async function mockApis(page: Page) {
       body: JSON.stringify(MOCK_MARINE) }))
   await page.route('**/api/weather/wind-grid**', r =>
     r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }))
+  await page.route('**/api/satellite/download-info**', r => {
+    const u = new URL(r.request().url())
+    const platform = u.searchParams.get('platform') ?? ''
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      availability: 'typically 1–5 days after acquisition', access: 'free NASA Earthdata login',
+      queries: [{ label: `${platform} — test product`, url: 'https://example.org/query?p=' + platform }],
+    }) })
+  })
   await page.route('**/api/solar/times**', r =>
     r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(MOCK_SOLAR_TIMES) }))
@@ -216,6 +226,53 @@ test.describe('E2E-004: Tide panel', () => {
     await expect(page.getByText(/Sea level now/)).toBeVisible({ timeout: 8_000 })
     await expect(page.getByText(/High tide|Low tide/).first()).toBeVisible()
     await expect(page.getByText(/not conditions inside the lagoon/)).toBeVisible()
+  })
+})
+
+test.describe('E2E-013: SWOT + planned acquisitions', () => {
+  test('SWOT appears in the overpass list', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await scrollToSection(page, 'Satellite')
+    await expect(page.getByText('SWOT', { exact: true })).toBeVisible({ timeout: 8_000 })
+  })
+
+  test('ticking a pass saves a self-contained record that survives reload', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await scrollToSection(page, 'Satellite')
+    await page.getByRole('checkbox', { name: /Save SWOT .* for download/ }).click()
+    await expect(page.getByText('Planned acquisitions (1)')).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByRole('link', { name: /SWOT/ })).toHaveAttribute('href', /example\.org\/query\?p=SWOT/)
+    await page.reload()
+    await expect(page.getByText('Planned acquisitions (1)')).toBeVisible()
+    await expect(page.getByText(/Availability: typically 1–5 days/)).toBeVisible()
+  })
+
+  test('unticking removes it; CSV export contains the query URL', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await scrollToSection(page, 'Satellite')
+    const box = page.getByRole('checkbox', { name: /Save Sentinel-2A .* for download/ })
+    await box.click()
+    await expect(page.getByText('Planned acquisitions (1)')).toBeVisible({ timeout: 8_000 })
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export CSV' }).click()])
+    const { readFile } = await import('node:fs/promises')
+    const csv = await readFile(await dl.path(), 'utf8')
+    expect(csv).toContain('Sentinel-2A')
+    expect(csv).toContain('https://example.org/query?p=Sentinel-2A')
+    await box.click()
+    await expect(page.getByText('Planned acquisitions (0)')).toBeVisible()
+  })
+
+  test('download-info failure shows an error and does not save', async ({ page }) => {
+    await mockApis(page)
+    await page.route('**/api/satellite/download-info**', r => r.fulfill({ status: 502, body: 'x' }))
+    await page.goto('/')
+    await scrollToSection(page, 'Satellite')
+    await page.getByRole('checkbox', { name: /Save SWOT .* for download/ }).click()
+    await expect(page.getByText(/502/).first()).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText('Planned acquisitions (0)')).toBeVisible()
   })
 })
 

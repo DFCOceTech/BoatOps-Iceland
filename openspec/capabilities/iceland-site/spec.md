@@ -18,6 +18,7 @@ Drone and blue-boat measurements at Jökulsárlón glacier lagoon. Ice is mobile
 | REQ-IS-07 | Go/No-Go uses wind, gust, cloud and solar elevation only (no wave criterion); solar thresholds default to 10°/3° for high latitude. |
 | REQ-IS-08 | Meteoalarm advisories default to Iceland (`IS`). No CMEMS credentials are required. |
 | REQ-IS-09 | A "Tides — 7 day" panel plots the site's sea-level curve for the full forecast with per-day high/low times (UTC) and a plan-time marker; it states that heights are an offshore reference, not lagoon level. |
+| REQ-IS-10 | The overpass catalogue includes SWOT (NORAD 54754), Sentinel-1D and Sentinel-2C. Each pass row has a checkbox that saves a self-contained record (pass, site, bbox, availability note, access note and catalogue query URLs for CDSE OData / Earth Search STAC / NASA CMR) in browser storage; the "Planned acquisitions" panel lists them, flags passes already flown, and exports JSON/CSV. `/api/satellite/download-info` builds the queries. |
 
 ## Scenarios
 
@@ -29,6 +30,7 @@ Drone and blue-boat measurements at Jökulsárlón glacier lagoon. Ice is mobile
 - **SCENARIO-IS-05a** Marine forecast returns equal-length `times`/`sea_level_m` arrays. **05b** Out-of-range lat/lon returns 422; upstream failure returns 502.
 - **SCENARIO-IS-06a** S1 overlay returns PNG with `X-Scene-Id`, `X-Acquisition-Time`, `X-Bbox`. **06b** No scene → 404. **06c** No CDSE credentials → 503.
 - **SCENARIO-IS-09a** Given marine data, the panel shows a chart and ▲/▼ high/low entries per day. **09b** On API failure it shows the error and other panels still work.
+- **SCENARIO-IS-10a** SWOT passes appear in the list. **10b** Ticking a pass stores its queries and survives reload. **10c** Unticking removes it; CSV export holds the query URL. **10d** If query resolution fails, an error shows and nothing is saved. **10e** Queries use AOS−10 min … LOS+10 min and the site bbox; SWOT uses the current `_D` CMR collections.
 - **SCENARIO-IS-07a** With wind 13.6 kt, gust 18.5 kt, cloud 35 %, sun 42° the verdict is CAUTION (cloud amber).
 
 ## Known limitations

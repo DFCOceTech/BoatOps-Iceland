@@ -116,6 +116,17 @@ export const getSatelliteOverpasses = (bbox: Bbox = AOI, days = 7) =>
     `/api/satellite/overpasses?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}&days=${days}`
   )
 
+export interface DownloadQuery { label: string; url: string; note?: string }
+export interface DownloadInfo { availability: string; access: string; queries: DownloadQuery[] }
+
+/** Catalogue queries that find this overpass's data product once acquired. */
+export const getDownloadInfo = (p: Overpass, bbox: Bbox) =>
+  fetchJson<DownloadInfo>(
+    `/api/satellite/download-info?platform=${encodeURIComponent(p.platform)}` +
+    `&aos_utc=${encodeURIComponent(p.aos_utc)}&los_utc=${encodeURIComponent(p.los_utc)}` +
+    `&west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
+  )
+
 // S2 overlay returns satellite-specific headers (not X-Timestamp / X-Colorscale).
 export interface S2OverlayResult {
   blob: Blob

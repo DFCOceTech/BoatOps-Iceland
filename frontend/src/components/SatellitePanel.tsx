@@ -5,6 +5,7 @@ import { useTimeContext } from '../context/TimeContext'
 import { useFetch } from '../hooks/useFetch'
 import { getSatelliteOverpasses, getSolarTimes } from '../api/client'
 import { useSite } from '../context/SiteContext'
+import { usePlanned, passKey } from '../context/PlannedContext'
 import type { Overpass } from '../api/client'
 
 const LOCAL_TZ = 'Atlantic/Reykjavik'   // UTC+0 all year
@@ -30,6 +31,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   'Sentinel-1': '#4ade80', 'Sentinel-2': '#38bdf8', 'Sentinel-3': '#818cf8',
   'SNPP': '#a78bfa', 'NOAA-20': '#c084fc',
   'Landsat 8': '#fb923c', 'Landsat 9': '#f97316',
+  'SWOT': '#e879f9',
 }
 
 function platformColor(platform: string): string {
@@ -99,8 +101,9 @@ function ensureTrackLayer(map: maplibregl.Map, passes: Overpass[]) {
       paint: {
         'line-color': [
           'match', ['get', 'platform'],
-          'Sentinel-1A', '#4ade80', 'Sentinel-1C', '#4ade80',
-          'Sentinel-2A', '#38bdf8', 'Sentinel-2B', '#38bdf8',
+          'Sentinel-1A', '#4ade80', 'Sentinel-1C', '#4ade80', 'Sentinel-1D', '#4ade80',
+          'Sentinel-2A', '#38bdf8', 'Sentinel-2B', '#38bdf8', 'Sentinel-2C', '#38bdf8',
+          'SWOT', '#e879f9',
           'Sentinel-3A', '#818cf8', 'Sentinel-3B', '#818cf8',
           'Landsat 8', '#fb923c', 'Landsat 9', '#f97316',
           'Suomi-NPP (VIIRS)', '#a78bfa', 'NOAA-20 (VIIRS)', '#c084fc',
@@ -175,6 +178,7 @@ export default function SatellitePanel() {
   const { map } = useMapContext()
   const { setForecastHour } = useTimeContext()
   const { active: CENTER, bbox } = useSite()
+  const { has, add, remove, pending } = usePlanned()
   const overpasses = useFetch(() => getSatelliteOverpasses(bbox))
   const solarTimes = useFetch(() => getSolarTimes(CENTER.lat, CENTER.lon))
   const [tracksVisible,  setTracksVisible]  = useState(false)
@@ -265,6 +269,8 @@ export default function SatellitePanel() {
   function renderPassRow(p: Overpass, i: number) {
     const daylit   = isDaylightPass(p.aos_utc, sunrise, sunset)
     const selected = p.aos_utc === selectedAos
+    const key      = passKey(p, CENTER)
+    const planned  = has(key)
     return (
       <tr key={i}
         onClick={() => handlePassClick(p)}
@@ -282,6 +288,12 @@ export default function SatellitePanel() {
         <td style={{ ...S.td, textAlign: 'center' as const,
           color: p.max_elevation_deg >= 20 ? '#22c55e' : '#94a3b8' }}>
           {p.max_elevation_deg.toFixed(0)}°
+        </td>
+        <td style={{ ...S.td, textAlign: 'center' as const }} onClick={e => e.stopPropagation()}>
+          <input type="checkbox" style={S.checkbox} checked={planned} disabled={pending.has(key)}
+            aria-label={`Save ${p.platform} ${p.aos_utc} for download after acquisition`}
+            title="Save this pass for download after acquisition"
+            onChange={() => planned ? remove(key) : add(p, { name: CENTER.name, lat: CENTER.lat, lon: CENTER.lon }, bbox)} />
         </td>
       </tr>
     )
@@ -307,13 +319,14 @@ export default function SatellitePanel() {
                 <th style={S.th}>AOS (UTC)</th>
                 <th style={{ ...S.th, textAlign: 'center' as const }}>Dur</th>
                 <th style={{ ...S.th, textAlign: 'center' as const }}>Elev</th>
+                <th style={{ ...S.th, textAlign: 'center' as const }} title="Save for download after acquisition">Save</th>
               </tr>
             </thead>
             <tbody>
               {groups.map(({ platform, passes }) => (
                 <>
                   <tr key={platform}>
-                    <td colSpan={3} style={{ ...S.groupHead, color: platformColor(platform) }}>
+                    <td colSpan={4} style={{ ...S.groupHead, color: platformColor(platform) }}>
                       {platform}
                     </td>
                   </tr>

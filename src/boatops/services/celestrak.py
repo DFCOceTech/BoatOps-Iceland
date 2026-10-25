@@ -38,9 +38,12 @@ _GP_URL = "https://celestrak.org/NORAD/elements/gp.php"
 SATELLITE_CATALOG: dict[str, dict] = {
     "Sentinel-1A":        {"norad": 39634, "daytime_only": False, "swath_km": 250},
     "Sentinel-1C":        {"norad": 62261, "daytime_only": False, "swath_km": 250},
+    "Sentinel-1D":        {"norad": 66315, "daytime_only": False, "swath_km": 250},
     "Sentinel-2A":        {"norad": 40697, "daytime_only": True, "swath_km": 290},
     "Sentinel-2B":        {"norad": 42063, "daytime_only": True, "swath_km": 290},
+    "Sentinel-2C":        {"norad": 60989, "daytime_only": True, "swath_km": 290},
     "Landsat 8":          {"norad": 39084, "daytime_only": True, "swath_km": 185},
+    "SWOT":               {"norad": 54754, "daytime_only": False, "swath_km": 120},   # KaRIn 2x50 km + 20 km nadir gap
     "Landsat 9":          {"norad": 49260, "daytime_only": True, "swath_km": 185},
 }
 

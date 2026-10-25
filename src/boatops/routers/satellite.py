@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
 from boatops.config import settings
-from boatops.services import cdse_auth, celestrak, sentinel_hub
+from boatops.services import acquisition, cdse_auth, celestrak, sentinel_hub
 
 router = APIRouter(prefix="/api/satellite", tags=["satellite"])
 
@@ -83,3 +83,15 @@ def get_s1_overlay(west: float, south: float, east: float, north: float,
             "X-Acquisition-Time": meta.get("acquisition_time", ""),
         },
     )
+
+
+@router.get("/download-info")
+def get_download_info(platform: str = Query(..., max_length=40), aos_utc: str = Query(..., max_length=40),
+                      los_utc: str = Query(..., max_length=40),
+                      west: float = ..., south: float = ..., east: float = ..., north: float = ...):
+    """Catalogue queries to find this overpass's product once it has been acquired."""
+    bbox = _validate_bbox(west, south, east, north)
+    try:
+        return acquisition.build_queries(platform, aos_utc, los_utc, bbox)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="aos_utc/los_utc must be ISO-8601 timestamps")

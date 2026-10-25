@@ -1,5 +1,6 @@
 import { MapProvider } from './context/MapContext'
 import { SiteProvider } from './context/SiteContext'
+import { PlannedProvider } from './context/PlannedContext'
 import { TimeProvider } from './context/TimeContext'
 import MapView from './components/MapView'
 import Sidebar from './components/Sidebar'
@@ -10,6 +11,7 @@ export default function App() {
   return (
     <MapProvider>
       <SiteProvider>
+      <PlannedProvider>
       <TimeProvider>
         <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
           {/* Map area — TimeSlider is absolutely positioned within this container */}
@@ -21,6 +23,7 @@ export default function App() {
           <Sidebar />
         </div>
       </TimeProvider>
+      </PlannedProvider>
       </SiteProvider>
     </MapProvider>
   )

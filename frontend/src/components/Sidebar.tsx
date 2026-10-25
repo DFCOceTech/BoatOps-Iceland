@@ -8,6 +8,7 @@ import SitePanel from './SitePanel'
 import ImageryPanel from './ImageryPanel'
 import MarinePanel from './MarinePanel'
 import TidePanel from './TidePanel'
+import PlannedPanel from './PlannedPanel'
 import { useSite } from '../context/SiteContext'
 import GoNoDashboard from './GoNoDashboard'
 import { GoNoGoProvider } from '../context/GoNoGoContext'
@@ -85,6 +86,7 @@ export default function Sidebar() {
             <SolarPanel key={`s-${siteKey}`} />
             <ImageryPanel key={`i-${areaKey}`} />
             <SatellitePanel key={`p-${areaKey}`} />
+            <PlannedPanel />
           </GoNoGoProvider>
         </div>
       </aside>
