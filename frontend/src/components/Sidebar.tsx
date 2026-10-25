@@ -7,6 +7,7 @@ import SatellitePanel from './SatellitePanel'
 import SitePanel from './SitePanel'
 import ImageryPanel from './ImageryPanel'
 import MarinePanel from './MarinePanel'
+import LocalConditionsPanel from './LocalConditionsPanel'
 import TidePanel from './TidePanel'
 import PlannedPanel from './PlannedPanel'
 import LocalRasterPanel from './LocalRasterPanel'
@@ -82,6 +83,7 @@ export default function Sidebar() {
             <LayerPanel />
             <WindLayerPanel />
             <WeatherPanel key={`w-${siteKey}`} />
+            <LocalConditionsPanel key={`c-${siteKey}`} />
             <MarinePanel key={`m-${siteKey}`} />
             <TidePanel key={`t-${siteKey}`} />
             <SolarPanel key={`s-${siteKey}`} />

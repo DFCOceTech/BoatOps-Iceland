@@ -169,3 +169,8 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 - CDSE: <redacted> (Sentinel-2/3 catalog)
 - CMEMS: <redacted> (see .env)
 - Earthdata: <redacted> (Landsat — CMR not returning recent data; TLEs used instead)
+
+## 2026-10-25 — Local conditions panel (user request: check vedur.is / umferdin.is for AWS)
+- Finding: `api.vedur.is` (open, no key) serves IMO **and** Vegagerðin stations in one feed; 8 stations within 50 km of the lagoon (nearest Kvísker 15 km). No separate umferdin.is API needed.
+- Added REQ-IS-12, `services/vedur.py`, `routers/stations.py` (`/api/stations/nearby`), `LocalConditionsPanel`, pytest (7) and Playwright E2E-014 (2). Live call verified against the real API.
+- Not run: adversarial subagent review (small, read-only feature); Firefox/WebKit automation.

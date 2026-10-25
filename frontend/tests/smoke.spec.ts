@@ -79,7 +79,18 @@ const PNG_HEADERS = {
 
 // ── Mock setup ────────────────────────────────────────────────────────────────
 
+const MOCK_STATIONS = { stations: [
+  { id: 5316, name: 'Kvísker', owner: 'Veðurstofa Íslands', lat: 63.9, lon: -16.4, elevation_m: 20,
+    distance_km: 15, bearing_deg: 213, time: '2026-10-25T16:30:00', age_min: 12, t: 5.8, f: 6.2, fg: 9.1,
+    d: 336, d_txt: 'NNW', p: 985, rh: 80, r: 0.2 },
+  { id: 5544, name: 'Höfn í Hornafirði', owner: 'Veðurstofa Íslands', lat: 64.27, lon: -15.2, elevation_m: 5,
+    distance_km: 53, bearing_deg: 70, time: '2026-10-25T13:00:00', age_min: 200, t: 5.1, f: 4.7, fg: 6.7,
+    d: 347, d_txt: 'NNW', p: null, rh: null, r: null },
+] }
+
 async function mockApis(page: Page) {
+  await page.route('**/api/stations/nearby**', r =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_STATIONS) }))
   await page.route('**/api/weather/forecast**', r =>
     r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(MOCK_WEATHER) }))
@@ -226,6 +237,28 @@ test.describe('E2E-004: Tide panel', () => {
     await expect(page.getByText(/Sea level now/)).toBeVisible({ timeout: 8_000 })
     await expect(page.getByText(/High tide|Low tide/).first()).toBeVisible()
     await expect(page.getByText(/not conditions inside the lagoon/)).toBeVisible()
+  })
+})
+
+test.describe('E2E-014: Local conditions (REQ-IS-12)', () => {
+  test('nearest stations listed, old reading flagged stale', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await scrollToSection(page, 'Local Conditions')
+    const rows = page.getByTestId('station-row')
+    await expect(rows).toHaveCount(2, { timeout: 8_000 })
+    await expect(rows.first()).toContainText('Kvísker')
+    await expect(rows.first()).toContainText('15 km SW')
+    await expect(rows.first()).not.toContainText('STALE')
+    await expect(rows.nth(1)).toContainText('STALE')
+  })
+
+  test('API failure shows error, other panels still render', async ({ page }) => {
+    await mockApis(page)
+    await page.route('**/api/stations/nearby**', r => r.fulfill({ status: 502, body: 'x' }))
+    await page.goto('/')
+    await scrollToSection(page, 'Tide')
+    await expect(page.getByText(/Sea level now/)).toBeVisible({ timeout: 8_000 })
   })
 })
 

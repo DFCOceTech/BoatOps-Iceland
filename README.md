@@ -9,6 +9,7 @@ Field-planning web app for **drone and blue-boat (USV) measurements at Jökulsá
 | **Work Site** | — | Type coordinates, pick on map, use map centre, or drag the cyan marker. Save/export sites. The site is in the URL (`#site=lat,lon`) — share it with colleagues. |
 | Go/No-Go | derived | Wind, gusts, cloud, sun elevation; thresholds editable (⚙). |
 | Wind | Open-Meteo | 7-day forecast chart + animated wind field; scrub the forecast hour with the time slider. |
+| Local conditions | Icelandic Met Office + Road Administration (umferdin.is) | Live 10-min temperature, wind/gust, pressure, humidity from the 8 nearest automatic stations to the work site, with distance/bearing and a STALE flag after 60 min. Land stations (nearest ~15 km), not the lagoon. |
 | Tide & sea state | Open-Meteo Marine | Next high/low tides at the outlet, offshore Hs and SST. A **coastal reference** (~8 km grid): good for tidal phase/range in the outlet channel, **not** a model of the lagoon. |
 | Solar | suncalc | Sunrise/sunset, twilight, elevation. |
 | Imagery | CDSE | **Sentinel-1 SAR** (IW VV+VH or EW HH+HV, whichever is newest and covers the site; day/night, through cloud — best for finding ice) and **Sentinel-2** true colour, for the site area with selectable look-back. Scene time is shown: ice moves, always check the timestamp. |
