@@ -1,6 +1,9 @@
+import { useEffect } from 'react'
+import maplibregl from 'maplibre-gl'
 import { useFetch } from '../hooks/useFetch'
-import { getNearbyStations } from '../api/client'
+import { getNearbyStations, type WeatherStation } from '../api/client'
 import { useSite } from '../context/SiteContext'
+import { useMapContext } from '../context/MapContext'
 
 const S: Record<string, React.CSSProperties> = {
   section: { marginBottom: 24 },
@@ -16,9 +19,36 @@ const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 const compass = (deg: number) => COMPASS[Math.round(deg / 45) % 8]
 const fmt = (v: number | null, dp = 0, u = '') => v == null ? '—' : `${v.toFixed(dp)}${u}`
 
+const summary = (s: WeatherStation) =>
+  `${fmt(s.t, 1, ' °C')} · wind ${fmt(s.f, 1)} (gust ${fmt(s.fg, 1)}) m/s ${s.d_txt ?? ''}`.trim()
+
 export default function LocalConditionsPanel() {
   const { active } = useSite()
+  const { map } = useMapContext()
   const st = useFetch(() => getNearbyStations(active.lat, active.lon))
+
+  // One orange square per station; the panel is re-keyed per site, so cleanup clears them.
+  useEffect(() => {
+    if (!map || !st.data) return
+    const markers = st.data.stations.map(s => {
+      const el = document.createElement('div')
+      el.className = 'station-marker'
+      el.title = `${s.name} — ${summary(s)}`
+      el.style.cssText = 'width:12px;height:12px;background:#f59e0b;border:2px solid #0f172a;' +
+        `border-radius:2px;cursor:pointer;opacity:${s.age_min == null || s.age_min > STALE_MIN ? 0.5 : 1}`
+      const pop = document.createElement('div')
+      pop.style.cssText = 'color:#0f172a;font-size:12px;line-height:1.4'
+      const b = document.createElement('b'); b.textContent = s.name
+      pop.append(b, document.createElement('br'), document.createTextNode(summary(s)),
+        document.createElement('br'),
+        document.createTextNode(s.time ? `${s.time.slice(11, 16)} UTC (${s.age_min ?? '?'} min ago)` : 'no time'))
+      return new maplibregl.Marker({ element: el })
+        .setLngLat([s.lon, s.lat])
+        .setPopup(new maplibregl.Popup({ offset: 10 }).setDOMContent(pop))
+        .addTo(map)
+    })
+    return () => markers.forEach(m => m.remove())
+  }, [map, st.data])
 
   return (
     <section style={S.section}>

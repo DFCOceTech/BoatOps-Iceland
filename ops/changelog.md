@@ -174,3 +174,4 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 - Finding: `api.vedur.is` (open, no key) serves IMO **and** Vegagerðin stations in one feed; 8 stations within 50 km of the lagoon (nearest Kvísker 15 km). No separate umferdin.is API needed.
 - Added REQ-IS-12, `services/vedur.py`, `routers/stations.py` (`/api/stations/nearby`), `LocalConditionsPanel`, pytest (7) and Playwright E2E-014 (2). Live call verified against the real API.
 - Not run: adversarial subagent review (small, read-only feature); Firefox/WebKit automation.
+- Follow-up (user request): map markers (amber squares, popup with latest reading, dimmed when stale) for each station; E2E-014 now 3 tests, Chromium 37 passed.

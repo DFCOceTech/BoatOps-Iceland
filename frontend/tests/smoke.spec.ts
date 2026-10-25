@@ -253,6 +253,15 @@ test.describe('E2E-014: Local conditions (REQ-IS-12)', () => {
     await expect(rows.nth(1)).toContainText('STALE')
   })
 
+  test('each station gets a map marker with a popup', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    const markers = page.locator('.station-marker')
+    await expect(markers).toHaveCount(2, { timeout: 8_000 })
+    await markers.first().dispatchEvent('click')  // off-screen at default zoom
+    await expect(page.locator('.maplibregl-popup')).toContainText('Kvísker')
+  })
+
   test('API failure shows error, other panels still render', async ({ page }) => {
     await mockApis(page)
     await page.route('**/api/stations/nearby**', r => r.fulfill({ status: 502, body: 'x' }))
