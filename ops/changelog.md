@@ -9,6 +9,7 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 - Fixed overpass prediction to use swath width (agent-initiated: found empty results in live test).
 - 7-day tide panel (TidePanel) and coverage-aware Sentinel-2 selection (user requests).
 - SWOT, Sentinel-1D, Sentinel-2C added to overpass catalogue; checkbox per pass saves download queries (Planned acquisitions panel, JSON/CSV export) — user request.
+- Sentinel-1 EW HH+HV (+ single-pol) support with slice grouping/coverage; local GeoTIFF overlay panel (geotiff + proj4) for drone/sonar rasters — user requests.
 - Slimmed Docker/conda envs (no GDAL/xarray/matplotlib); `.env.example` has CDSE only.
 
 ## 2026-05-21

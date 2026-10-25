@@ -19,6 +19,7 @@ Drone and blue-boat measurements at Jökulsárlón glacier lagoon. Ice is mobile
 | REQ-IS-08 | Meteoalarm advisories default to Iceland (`IS`). No CMEMS credentials are required. |
 | REQ-IS-09 | A "Tides — 7 day" panel plots the site's sea-level curve for the full forecast with per-day high/low times (UTC) and a plan-time marker; it states that heights are an offshore reference, not lagoon level. |
 | REQ-IS-10 | The overpass catalogue includes SWOT (NORAD 54754), Sentinel-1D and Sentinel-2C. Each pass row has a checkbox that saves a self-contained record (pass, site, bbox, availability note, access note and catalogue query URLs for CDSE OData / Earth Search STAC / NASA CMR) in browser storage; the "Planned acquisitions" panel lists them, flags passes already flown, and exports JSON/CSV. `/api/satellite/download-info` builds the queries. |
+| REQ-IS-11 | The user can load their own GeoTIFFs (drone orthomosaics, sonar/DSM rasters) as map overlays by file picker or drag-and-drop. Files are decoded in the browser (no upload, not persisted), read from an internal overview (longest side ≤ 4096 px; full-resolution images > 40 MP without overviews are refused with a `gdaladdo`/COG hint), georeferenced from EPSG 4326/4258, UTM (326xx, 327xx, 258xx), 3857, ISN93 (3057), ISN2016 (8088). RGB(A) rasters display as-is; single-band rasters get a viridis/grey ramp over an editable range (auto = 2–98 %), nodata transparent. Per-layer visibility, opacity, zoom-to, remove. Layers are independent of the work site. |
 
 ## Scenarios
 
@@ -32,12 +33,14 @@ Drone and blue-boat measurements at Jökulsárlón glacier lagoon. Ice is mobile
 - **SCENARIO-IS-09a** Given marine data, the panel shows a chart and ▲/▼ high/low entries per day. **09b** On API failure it shows the error and other panels still work.
 - **SCENARIO-IS-10a** SWOT passes appear in the list. **10b** Ticking a pass stores its queries and survives reload. **10c** Unticking removes it; CSV export holds the query URL. **10d** If query resolution fails, an error shows and nothing is saved. **10e** Queries use AOS−10 min … LOS+10 min and the site bbox; SWOT uses the current `_D` CMR collections.
 - **SCENARIO-IS-06d** EW HH+HV scenes are selected and rendered with HH/HV bands and `polarization=DH`. **06e** Duplicate product copies are ignored. **06f** Consecutive slices of one data-take are grouped and their footprints unioned; different polarisations are never mixed. **06g** `X-Sar-Mode` and `X-Coverage` headers are returned and shown in the UI.
+- **SCENARIO-IS-11a** An RGB EPSG:4326 file shows exact bounds. **11b** A UTM 28N float raster with nodata is reprojected to the right lon/lat and its auto range ignores nodata. **11c** Changing range/ramp/opacity keeps the layer; max ≤ min is flagged. **11d** Unsupported CRS, non-TIFF and corrupt files give an error and load nothing. **11e** Hide/remove work, two files coexist, and moving the work site does not drop the layers.
 - **SCENARIO-IS-07a** With wind 13.6 kt, gust 18.5 kt, cloud 35 %, sun 42° the verdict is CAUTION (cloud amber).
 
 ## Known limitations
 - The lagoon (~18 km², up to ~250 m deep) is below the resolution of any open ocean model; tide data are an offshore phase/range reference.
 - Preset coordinates are approximate; verify with GNSS.
 - S1/S2 live retrieval needs CDSE credentials; automated tests mock CDSE.
+- Local GeoTIFF overlays are session-only. A rotated/skewed transform, user-defined CRS or an EPSG code not listed in REQ-IS-11 must be reprojected with `gdalwarp` first. The overlay is a corner-pinned image (fine at drone/sonar scale); it is not a full tile pyramid.
 - Esri World Imagery has no guaranteed date. Do not use it to assess current ice.
 
 ## Implementation Status

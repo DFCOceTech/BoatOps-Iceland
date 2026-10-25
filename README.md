@@ -11,8 +11,9 @@ Field-planning web app for **drone and blue-boat (USV) measurements at Jökulsá
 | Wind | Open-Meteo | 7-day forecast chart + animated wind field; scrub the forecast hour with the time slider. |
 | Tide & sea state | Open-Meteo Marine | Next high/low tides at the outlet, offshore Hs and SST. A **coastal reference** (~8 km grid): good for tidal phase/range in the outlet channel, **not** a model of the lagoon. |
 | Solar | suncalc | Sunrise/sunset, twilight, elevation. |
-| Imagery | CDSE | **Sentinel-1 SAR** (day/night, through cloud — best for finding ice) and **Sentinel-2** true colour, for the site area with selectable look-back. Scene time is shown: ice moves, always check the timestamp. |
-| Satellite passes | CelesTrak | Sentinel-1/2/3, Landsat, VIIRS overpasses over the site; ground tracks. |
+| Imagery | CDSE | **Sentinel-1 SAR** (IW VV+VH or EW HH+HV, whichever is newest and covers the site; day/night, through cloud — best for finding ice) and **Sentinel-2** true colour, for the site area with selectable look-back. Scene time is shown: ice moves, always check the timestamp. |
+| **Your GeoTIFFs** | local files | Drop drone orthomosaics or sonar/depth rasters onto *Imagery — your GeoTIFFs*. Read in the browser (nothing uploaded). RGB shows as-is; single-band rasters get a colour ramp with editable range. Needs overviews for big mosaics (`gdaladdo -r average file.tif 2 4 8 16 32` or COG). |
+| Satellite passes | CelesTrak | Sentinel-1/2, Landsat 8/9 and **SWOT** overpasses over the site; ground tracks. Tick **Save** on a pass to keep the queries needed to find/download its product afterwards (Planned acquisitions → JSON/CSV). |
 | Base layers | Esri, OpenSeaMap, GEBCO | Optional; GEBCO is coarse and not valid inside the lagoon. |
 
 Weather alerts use Meteoalarm Iceland. Not included (and not meaningful at this scale): CMEMS currents/waves/SST/salinity, EMODnet, GBIF.
