@@ -186,3 +186,29 @@ export interface MarineForecast {
 export const getMarineForecast = (lat = CENTER.lat, lon = CENTER.lon) =>
   fetchJson<MarineForecast>(`/api/marine/forecast?lat=${lat}&lon=${lon}`)
 
+
+// ── /api/stations ────────────────────────────────────────────────────────────
+
+export interface WeatherStation {
+  id: number
+  name: string
+  owner: string | null
+  lat: number
+  lon: number
+  elevation_m: number | null
+  distance_km: number
+  bearing_deg: number
+  time: string | null
+  age_min: number | null
+  t: number | null
+  f: number | null
+  fg: number | null
+  d: number | null
+  d_txt: string | null
+  p: number | null
+  rh: number | null
+  r: number | null
+}
+
+export const getNearbyStations = (lat: number, lon: number, radiusKm = 60) =>
+  fetchJson<{ stations: WeatherStation[] }>(`/api/stations/nearby?lat=${lat}&lon=${lon}&radius_km=${radiusKm}`)
