@@ -81,6 +81,8 @@ def get_s1_overlay(west: float, south: float, east: float, north: float,
             "X-Bbox": ",".join(str(v) for v in bbox),
             "X-Scene-Id": meta.get("scene_id", ""),
             "X-Acquisition-Time": meta.get("acquisition_time", ""),
+            "X-Coverage": str(meta.get("coverage_pct", "")),
+            "X-Sar-Mode": f"{meta.get('mode', '')} {meta.get('co', '')}+{meta.get('cross', '')}",
         },
     )
 

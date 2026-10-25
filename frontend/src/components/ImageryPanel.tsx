@@ -140,6 +140,7 @@ export default function ImageryPanel() {
           <div style={{ ...S.hint, color: '#94a3b8' }}>
             <span style={S.badge}>{s.meta.acquisitionTime
               ? new Date(s.meta.acquisitionTime).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—'}</span>
+            {s.meta.sarMode && <span style={S.badge}>{s.meta.sarMode}</span>}
             {s.meta.cloudCoverPct !== null && <span style={S.badge}>☁ {s.meta.cloudCoverPct.toFixed(0)}% (tile)</span>}
             {s.meta.coveragePct !== null && (
               <span style={{ ...S.badge, color: s.meta.coveragePct >= 95 ? '#4ade80' : '#fbbf24' }}>
@@ -157,7 +158,7 @@ export default function ImageryPanel() {
     <section style={S.section}>
       <p style={S.heading}>Imagery (work-site area)</p>
       {render('s1', 'Sentinel-1 SAR (ice)',
-        'Radar, day/night, through cloud. Calm open water is dark; ice and wind-roughened water are bright. Scene age is shown — ice moves, so check the timestamp.')}
+        'Radar, day/night, through cloud. Calm open water is dark; ice and wind-roughened water are bright. Uses the newest IW (VV+VH) or EW (HH+HV) scene that covers the area — the mode badge tells which; HH and VV respond differently to wind-roughened water. Ice moves: check the timestamp.')}
       {render('s2', 'Sentinel-2 true colour',
         'Optical. Picks the most recent pass that fully covers the area; if none does, the best-covering one (flagged ⚠ partial). Cloud % is tile-wide, not for your site — raise the limit if no scene is found.')}
     </section>

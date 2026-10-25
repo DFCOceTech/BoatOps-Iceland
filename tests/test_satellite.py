@@ -244,10 +244,10 @@ def test_s1_overlay_without_credentials_503(monkeypatch):
 
 
 @patch("httpx.get", return_value=_mock_odata_response([
-    {"Name": "S1A_IW_GRDH_1SDV_20260501", "ContentDate": {"Start": "2026-05-01T07:00:00.000Z"}}]))
+    {"Name": "S1A_IW_GRDH_1SDV_20260501T070000_20260501T070025_0", "ContentDate": {"Start": "2026-05-01T07:00:00.000Z", "End": "2026-05-01T07:00:25.000Z"}}]))
 def test_find_best_s1_scene(mock_get):
     scene = sentinel_hub.find_best_s1_scene(_FAKE_TOKEN, (-16.3, 63.98, -16.06, 64.1))
-    assert scene["scene_id"].startswith("S1A_IW_GRDH")
+    assert scene["scene_id"].startswith("S1A_IW_GRDH") and scene["pol"] == "DV"
     assert "SENTINEL-1" in mock_get.call_args.kwargs["params"]["$filter"]
 
 
@@ -337,3 +337,74 @@ def test_adjacent_tiles_of_one_pass_are_unioned(mock_get):
     mock_get.return_value = _mock_odata_response([east, west])
     scene = sentinel_hub.find_best_scene(_FAKE_TOKEN, _BB)
     assert scene["coverage_pct"] == 100 and scene["tiles"] == 2
+
+
+# ── Sentinel-1 EW / HH support (user request) — REQ-IS-06, SCENARIO-IS-06d..g
+
+@pytest.mark.parametrize("name,expect", [
+    ("S1D_EW_GRDM_1SDH_20261024T184123_20261024T184228_0", ("EW", "DH", "HH", "HV")),
+    ("S1C_IW_GRDH_1SDV_20261023T073300_20261023T073325_0", ("IW", "DV", "VV", "VH")),
+    ("S1A_EW_GRDM_1SSH_20261024T184123_20261024T184228_0", ("EW", "SH", "HH", "HH")),
+])
+def test_parse_s1_name(name, expect):
+    i = sentinel_hub.parse_s1_name(name)
+    assert (i["mode"], i["pol"], i["co"], i["cross"]) == expect
+
+
+def test_parse_s1_name_rejects_unsupported():
+    assert sentinel_hub.parse_s1_name("S1A_WV_GRDM_1SSV_2026") is None
+    assert sentinel_hub.parse_s1_name("garbage") is None
+
+
+def _s1_item(name, start, end, fp=None):
+    return {"Name": name, "ContentDate": {"Start": start, "End": end}, "GeoFootprint": fp}
+
+
+@patch("httpx.get")
+def test_find_best_s1_prefers_newest_ew_hh_and_dedupes(mock_get):
+    ew = _s1_item("S1D_EW_GRDM_1SDH_20261024T184123_20261024T184228_0",
+                  "2026-10-24T18:41:23.000Z", "2026-10-24T18:42:28.000Z")
+    iw = _s1_item("S1C_IW_GRDH_1SDV_20261023T073300_20261023T073325_0",
+                  "2026-10-23T07:33:00.000Z", "2026-10-23T07:33:25.000Z")
+    mock_get.return_value = _mock_odata_response([ew, dict(ew), iw])       # duplicate copy of ew
+    scene = sentinel_hub.find_best_s1_scene(_FAKE_TOKEN, _BB)
+    assert (scene["mode"], scene["pol"], scene["co"]) == ("EW", "DH", "HH") and scene["tiles"] == 1
+
+
+@patch("httpx.get")
+def test_s1_groups_consecutive_slices_and_unions_coverage(mock_get):
+    a = _s1_item("S1D_EW_GRDM_1SDH_20261024T184123_20261024T184228_0", "2026-10-24T18:41:23.000Z",
+                 "2026-10-24T18:42:28.000Z", _poly(-16.5, 63.9, -16.2, 64.2))
+    b = _s1_item("S1D_EW_GRDM_1SDH_20261024T184228_20261024T184333_0", "2026-10-24T18:42:28.000Z",
+                 "2026-10-24T18:43:33.000Z", _poly(-16.2, 63.9, -16.0, 64.2))
+    mock_get.return_value = _mock_odata_response([b, a])
+    scene = sentinel_hub.find_best_s1_scene(_FAKE_TOKEN, _BB)
+    assert scene["tiles"] == 2 and scene["coverage_pct"] == 100
+    assert scene["window_start"].startswith("2026-10-24T18:41:23")
+    assert scene["window_end"].startswith("2026-10-24T18:43:33")
+
+
+@patch("httpx.get")
+def test_s1_does_not_mix_polarisations_in_one_group(mock_get):
+    ew = _s1_item("S1D_EW_GRDM_1SDH_20261024T184123_20261024T184228_0", "2026-10-24T18:41:23.000Z", "2026-10-24T18:42:28.000Z")
+    iw = _s1_item("S1D_IW_GRDH_1SDV_20261024T184200_20261024T184225_0", "2026-10-24T18:42:00.000Z", "2026-10-24T18:42:25.000Z")
+    mock_get.return_value = _mock_odata_response([ew, iw])
+    scene = sentinel_hub.find_best_s1_scene(_FAKE_TOKEN, _BB)
+    assert scene["tiles"] == 1
+
+
+@patch("httpx.post")
+@patch.object(sentinel_hub, "find_best_s1_scene", return_value={
+    "scene_id": "S1D_EW", "acquisition_time": "2026-10-24T18:41:23+00:00",
+    "window_start": "2026-10-24T18:41:23+00:00", "window_end": "2026-10-24T18:42:28+00:00",
+    "mode": "EW", "pol": "DH", "co": "HH", "cross": "HV", "coverage_pct": 100, "tiles": 1})
+def test_s1_overlay_request_uses_scene_polarisation_and_bands(mock_find, mock_post):
+    sentinel_hub._cache.clear()
+    mock_post.return_value = MagicMock(spec=httpx.Response, content=b"png")
+    mock_post.return_value.raise_for_status.return_value = None
+    sentinel_hub.get_s1_overlay(_FAKE_TOKEN, _BB, 7)
+    body = mock_post.call_args.kwargs["json"]
+    flt = body["input"]["data"][0]["dataFilter"]
+    assert flt["polarization"] == "DH" and flt["acquisitionMode"] == "EW"
+    assert flt["timeRange"]["from"] == "2026-10-24T18:40:53Z"            # window start - 30 s
+    assert '"HH"' in body["evalscript"] and '"HV"' in body["evalscript"] and "VV" not in body["evalscript"]

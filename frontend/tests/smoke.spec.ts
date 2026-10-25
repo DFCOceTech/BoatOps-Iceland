@@ -352,13 +352,14 @@ test.describe('E2E-011: Sentinel-1 / Sentinel-2 imagery', () => {
     await page.route('**/api/satellite/s1-overlay**', (r: Route) => {
       url = r.request().url()
       return r.fulfill({ status: 200, contentType: 'image/png',
-        headers: { 'x-bbox': '-16.29,63.99,-16.07,64.10', 'x-scene-id': 'S1A_TEST',
+        headers: { 'x-bbox': '-16.29,63.99,-16.07,64.10', 'x-scene-id': 'S1A_TEST', 'x-sar-mode': 'EW HH+HV', 'x-coverage': '100',
                    'x-acquisition-time': '2026-05-03T07:00:00+00:00' },
         body: Buffer.from(TINY_PNG_B64, 'base64') })
     })
     await page.goto('/')
     await page.locator('label').filter({ hasText: 'Sentinel-1 SAR' }).locator('input').check()
     await expect(page.getByText(/2026-05-03 07:00 UTC/)).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText('EW HH+HV')).toBeVisible()
     expect(url).toContain('days_back=7')
     expect(url).toMatch(/west=-16\.\d+/)
   })
