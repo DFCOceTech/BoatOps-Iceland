@@ -43,8 +43,6 @@ $EDITOR .env
 Required variables in `.env`:
 | Variable | Source |
 |----------|--------|
-| `COPERNICUSMARINE_SERVICE_USERNAME` | CMEMS account at marine.copernicus.eu |
-| `COPERNICUSMARINE_SERVICE_PASSWORD` | same |
 | `CDSE_EMAIL` | CDSE account at dataspace.copernicus.eu |
 | `CDSE_PASSWORD` | same |
 
@@ -132,7 +130,7 @@ Or, if the institute server already runs nginx on the host:
 
 | Service | CPU | RAM | Notes |
 |---------|-----|-----|-------|
-| api | 1–2 cores | 1–2 GB | CMEMS `copernicusmarine` downloads up to ~10 MB per wave overlay |
+| api | 1–2 cores | 1–2 GB | Sentinel imagery PNGs (~1 MB each) |
 | web | minimal | ~50 MB | pure nginx static serve + proxy |
 
 For a planning tool with occasional (not continuous) use, a 2-core / 4 GB VPS is comfortable.
@@ -141,7 +139,6 @@ For a planning tool with occasional (not continuous) use, a 2-core / 4 GB VPS is
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| API returns 500 on wave endpoints | CMEMS credentials wrong or expired | Check `COPERNICUSMARINE_SERVICE_USERNAME/PASSWORD` in `.env` |
 | S2 overlay returns 401 | CDSE token expired or wrong credentials | Check `CDSE_EMAIL/PASSWORD` |
 | `docker compose build` fails with `PackageNotFoundError` | conda-forge package unavailable | Pin the failing package to a known-good version in `deploy/environment-prod.yml` |
 | Frontend shows blank map | MapLibre GL JS needs WebGL | Ensure the browser has hardware acceleration enabled |

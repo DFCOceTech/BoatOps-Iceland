@@ -32,17 +32,14 @@ def _solar_elevation(observer, t) -> float:
 
 _GP_URL = "https://celestrak.org/NORAD/elements/gp.php"
 
-# swath_km: imaging swath width — a pass 'covers' a site if the swath, not just the nadir track, reaches it.
+# VIIRS / Sentinel-3 omitted: their 1300-3000 km swaths cover a point-sized site on nearly every pass.
+# swath_km: imaging swath width (approximate, centred on nadir; Sentinel-1 actually looks right of track) — a pass 'covers' a site if the swath, not just the nadir track, reaches it.
 # daytime_only=False: SAR sensors work at night; daytime_only=True: optical sensors need sunlit ground
 SATELLITE_CATALOG: dict[str, dict] = {
     "Sentinel-1A":        {"norad": 39634, "daytime_only": False, "swath_km": 250},
     "Sentinel-1C":        {"norad": 62261, "daytime_only": False, "swath_km": 250},
     "Sentinel-2A":        {"norad": 40697, "daytime_only": True, "swath_km": 290},
     "Sentinel-2B":        {"norad": 42063, "daytime_only": True, "swath_km": 290},
-    "Sentinel-3A":        {"norad": 41335, "daytime_only": True, "swath_km": 1270},
-    "Sentinel-3B":        {"norad": 43437, "daytime_only": True, "swath_km": 1270},
-    "Suomi-NPP (VIIRS)":  {"norad": 37849, "daytime_only": True, "swath_km": 3000},
-    "NOAA-20 (VIIRS)":    {"norad": 43013, "daytime_only": True, "swath_km": 3000},
     "Landsat 8":          {"norad": 39084, "daytime_only": True, "swath_km": 185},
     "Landsat 9":          {"norad": 49260, "daytime_only": True, "swath_km": 185},
 }
@@ -60,6 +57,10 @@ def swath_aoi(bbox: tuple, swath_km: float):
     return box(west - d_lon, south - d_lat, east + d_lon, north + d_lat)
 
 
+_tle_cache, _tle_lock = make_cache(ttl_seconds=6 * 3600, maxsize=32)
+
+
+@cachetools.cached(cache=_tle_cache, lock=_tle_lock)
 def _fetch_tle(norad_id: int) -> tuple[str, str, str]:
     resp = requests.get(_GP_URL, params={"CATNR": norad_id, "FORMAT": "tle"}, timeout=15)
     resp.raise_for_status()

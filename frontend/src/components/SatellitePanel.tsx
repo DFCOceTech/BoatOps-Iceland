@@ -323,7 +323,7 @@ export default function SatellitePanel() {
             </tbody>
           </table>
           <p style={S.hint}>
-            Click row → set plan time + show track · elev ≥ 20° green · highlighted = daytime
+            Times = satellite above the site's horizon; swath coverage is approximate (S1 looks right of track). Click row → set plan time + show track · elev ≥ 20° green · highlighted = daytime
           </p>
         </div>
       )}

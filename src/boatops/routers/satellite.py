@@ -1,4 +1,5 @@
 import json
+import math
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -12,14 +13,20 @@ _MAX_BBOX_SPAN = 2.0   # degrees — imagery is for a work-site, not a region
 
 
 @router.get("/overpasses")
-def get_overpasses(west: float, south: float, east: float, north: float, days: int = 7):
+def get_overpasses(west: float, south: float, east: float, north: float,
+                   days: int = Query(7, ge=1, le=14)):
+    bbox = _validate_bbox(west, south, east, north)
     try:
-        return celestrak.get_overpasses((west, south, east, north), days)
+        return celestrak.get_overpasses(bbox, days)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"upstream error: {exc}")
 
 
 def _validate_bbox(west: float, south: float, east: float, north: float) -> tuple:
+    if not all(math.isfinite(v) for v in (west, south, east, north)):
+        raise HTTPException(status_code=422, detail="bbox values must be finite numbers")
+    if not (-180 <= west < east <= 180 and -90 <= south < north <= 90):
+        raise HTTPException(status_code=422, detail="bbox out of range or inverted")
     if east <= west or north <= south:
         raise HTTPException(status_code=422, detail="bbox must have positive width and height")
     if (east - west) > _MAX_BBOX_SPAN or (north - south) > _MAX_BBOX_SPAN:
@@ -30,7 +37,7 @@ def _validate_bbox(west: float, south: float, east: float, north: float) -> tupl
 
 @router.get("/s2-overlay")
 def get_s2_overlay(west: float, south: float, east: float, north: float,
-                   cloud_max: float = 20.0, days_back: int = Query(30, ge=1, le=90)):
+                   cloud_max: float = Query(20.0, ge=0, le=100), days_back: int = Query(30, ge=1, le=90)):
     bbox = _validate_bbox(west, south, east, north)
     if not settings.cdse_email or not settings.cdse_password:
         raise HTTPException(status_code=503, detail="CDSE credentials not configured")

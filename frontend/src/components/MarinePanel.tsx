@@ -25,7 +25,9 @@ export default function MarinePanel() {
         {marine.error && <div style={{ ...S.line, color: '#f87171' }}>{marine.error}</div>}
         {marine.data && (() => {
           const d = marine.data
-          const i = Math.max(0, d.times.findIndex(t => t >= nowIso))
+          const idx = d.times.findIndex(t => t >= nowIso)
+          if (idx < 0) return <div style={S.line}>Forecast has expired — reload the page.</div>
+          const i = idx
           const ext = findExtrema(d.times, d.sea_level_m, nowIso).slice(0, 4)
           const fmt = (v: number | null | undefined, u: string, dp = 2) => v == null ? '—' : `${v.toFixed(dp)} ${u}`
           return (

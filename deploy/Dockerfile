@@ -22,7 +22,7 @@ EXPOSE 8000
 # --proxy-headers: honour X-Forwarded-For from nginx
 # --forwarded-allow-ips: trust proxy headers only from Docker network (172.16/12)
 # --workers 4: each worker is a process; sync route handlers run in a threadpool,
-#   so 4 workers allows ~4 concurrent blocking CMEMS/CDSE fetches to proceed in parallel
+#   so 4 workers allows ~4 concurrent blocking CDSE/Open-Meteo fetches to proceed in parallel
 CMD ["/opt/conda/bin/uvicorn", "boatops.main:app", \
      "--host", "0.0.0.0", "--port", "8000", \
      "--proxy-headers", "--forwarded-allow-ips=172.16.0.0/12", \

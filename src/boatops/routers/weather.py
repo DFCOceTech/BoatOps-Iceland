@@ -1,3 +1,5 @@
+import math
+
 import httpx
 from fastapi import APIRouter, HTTPException
 
@@ -11,6 +13,8 @@ _MAX_POINTS    = 400    # grid nodes per request (one Open-Meteo call)
 
 
 def _validate_bbox_and_step(west: float, south: float, east: float, north: float, step: float) -> None:
+    if not all(math.isfinite(v) for v in (west, south, east, north, step)):
+        raise HTTPException(status_code=422, detail="values must be finite numbers")
     if east <= west or north <= south:
         raise HTTPException(status_code=422, detail="bbox must have positive width and height")
     if (east - west) > _MAX_BBOX_SPAN or (north - south) > _MAX_BBOX_SPAN:

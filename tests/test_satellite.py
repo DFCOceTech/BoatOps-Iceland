@@ -273,3 +273,27 @@ def test_nadir_track_100km_away_intersects_s2_swath_but_not_bare_box():
     track = LineString([(-14.0, 63.0), (-14.0, 65.0)])        # ≈ 100 km east of the site
     assert not track.intersects(box(*bbox))
     assert track.intersects(swath_aoi(bbox, 290))
+
+
+# ── input hardening (Raze review): REQ-IS-04
+
+@pytest.mark.parametrize("qs", [
+    "days=100000", "days=0",
+])
+def test_overpasses_days_bounded(qs):
+    assert client.get(f"/api/satellite/overpasses?{BBOX_QS}&{qs}").status_code == 422
+
+
+def test_overpasses_rejects_nan_and_oversized_bbox():
+    assert client.get("/api/satellite/overpasses?west=nan&south=63&east=-16&north=64").status_code == 422
+    assert client.get("/api/satellite/overpasses?west=-30&south=60&east=-10&north=70").status_code == 422
+
+
+def test_s2_cloud_max_bounded():
+    assert client.get(f"/api/satellite/s2-overlay?{BBOX_QS}&cloud_max=1e9").status_code == 422
+    assert client.get(f"/api/satellite/s2-overlay?{BBOX_QS}&cloud_max=nan").status_code == 422
+
+
+def test_wind_grid_rejects_nan():
+    from fastapi.testclient import TestClient as _TC  # noqa: F401
+    assert client.get("/api/weather/wind-grid?west=nan&south=63&east=-16&north=64").status_code == 422

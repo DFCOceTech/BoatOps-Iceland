@@ -3,7 +3,7 @@
 ## 2026-10-25
 | Suite | Result |
 |-------|--------|
-| `pytest tests` (conda `boatops-iceland`) | 56 passed |
+| `pytest tests` (conda `boatops-iceland`) | 61 passed |
 | `npm run build` (tsc -b + vite) | OK |
 | Playwright, chromium (mocked API) | 21 passed |
 | Playwright, firefox/webkit | not run — browser launch failure on authoring machine |

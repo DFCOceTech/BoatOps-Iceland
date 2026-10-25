@@ -63,12 +63,13 @@ def _build_s1_filter(bbox: tuple, days_back: int) -> str:
     )
     end_dt = datetime.now(timezone.utc)
     start_dt = end_dt - timedelta(days=days_back)
+    # IW, dual-pol VV+VH GRD only: matches the Process API request (polarization DV) and evalscript.
     return (
         f"Collection/Name eq 'SENTINEL-1' and "
         f"OData.CSC.Intersects(area=geography'SRID=4326;{wkt}') and "
         f"ContentDate/Start gt {start_dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')} and "
         f"ContentDate/Start lt {end_dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')} and "
-        f"contains(Name,'GRD')"
+        f"contains(Name,'IW_GRDH_1SDV')"
     )
 
 

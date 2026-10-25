@@ -48,11 +48,11 @@ export default function SitePanel() {
       .addTo(map)
     marker.on('dragend', () => {
       const { lng, lat } = marker.getLngLat()
-      setActive(lat, lng)
+      setActive(lat, lng, active.name)
     })
     activeMarker.current = marker
     return () => { marker.remove(); activeMarker.current = null }
-  }, [map, active.lat, active.lon, setActive])
+  }, [map, active.lat, active.lon, active.name, setActive])
 
   // Saved-site markers
   useEffect(() => {

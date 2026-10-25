@@ -3,9 +3,9 @@
 > Last updated: 2026-10-25 · Conda env: `boatops-iceland` (Python 3.11)
 
 ## What's Working
-- Backend (FastAPI): `/api/weather/{forecast,wind-grid,advisories}`, `/api/marine/forecast`, `/api/solar/*`, `/api/satellite/{overpasses,s1-overlay,s2-overlay}`. 56 pytest tests pass. Live endpoints (Open-Meteo, Open-Meteo Marine, CelesTrak, Meteoalarm IS) verified against the running server.
+- Backend (FastAPI): `/api/weather/{forecast,wind-grid,advisories}`, `/api/marine/forecast`, `/api/solar/*`, `/api/satellite/{overpasses,s1-overlay,s2-overlay}`. 61 pytest tests pass. Live endpoints (Open-Meteo, Open-Meteo Marine, CelesTrak, Meteoalarm IS) verified against the running server.
 - Frontend: Work Site panel (type / pick / drag / save / export / share via URL), Go/No-Go, wind field, weather, tide & sea state, solar, S1/S2 imagery, overpasses. 21 Playwright tests pass on Chromium (mocked API).
-- Overpass prediction now uses imaging swath width (a 12 km site box almost never intersects a nadir track).
+- Overpass prediction uses imaging swath width (approximate; Sentinel-1 actually looks right of nadir). VIIRS and Sentinel-3 were dropped (swaths too wide to be meaningful for a point site). Adversarial review (Raze) findings fixed: input validation, TLE cache, IW dual-pol S1 filter, marine cache rounding, expired-forecast guard.
 
 ## Not yet verified
 - `docker compose up --build` (no Docker on the authoring Mac) — also covers the shapely/frontend fixes from BoatOps PR #1.
