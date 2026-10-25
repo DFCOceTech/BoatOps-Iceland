@@ -140,15 +140,39 @@ def get_s1_overlay(token: str, bbox: tuple, days_back: int = 14) -> tuple[bytes,
     return resp.content, scene
 
 
+_FULL_COVERAGE = 0.95     # fraction of the requested bbox a scene must cover to count as "full"
+_GROUP_WINDOW = timedelta(minutes=10)   # tiles of one pass share (almost) the same start time
+
+
+def _bbox_coverage(footprints: list, bbox: tuple) -> float | None:
+    """Fraction of bbox covered by the union of scene footprints (GeoJSON); None if unknown."""
+    from shapely.geometry import box, shape
+    from shapely.ops import unary_union
+    try:
+        polys = [shape(g) for g in footprints if g]
+        if not polys:
+            return None
+        target = box(*bbox)
+        return float(unary_union(polys).intersection(target).area / target.area)
+    except Exception:
+        return None
+
+
 def find_best_scene(token: str, bbox: tuple,
                     cloud_max: float = 20.0, days_back: int = 90) -> dict | None:
-    """Return metadata for the most recent cloud-free L2A scene over bbox, or None."""
+    """Return the best recent cloud-limited L2A pass over bbox, or None.
+
+    Tiles of one pass are grouped (the Process API mosaics them), and coverage of the *bbox*
+    is computed from their footprints — tile-wide cloud cover says nothing about whether the
+    scene actually covers the site. Preference: most recent pass with full coverage; otherwise
+    the pass with the highest coverage (ties → most recent).
+    """
     resp = httpx.get(
         _ODATA_URL,
         params={
             "$filter": _build_filter(bbox, cloud_max, days_back),
             "$orderby": "ContentDate/Start desc",
-            "$top": 5,
+            "$top": 40,
             "$expand": "Attributes",
         },
         headers={"Authorization": f"Bearer {token}"},
@@ -158,17 +182,33 @@ def find_best_scene(token: str, bbox: tuple,
     items = resp.json().get("value", [])
     if not items:
         return None
-    best = items[0]
+
+    groups: list[list[dict]] = []   # items arrive newest first
+    for it in items:
+        start = datetime.fromisoformat(it["ContentDate"]["Start"].replace("Z", "+00:00"))
+        it["_start"] = start
+        if groups and abs(groups[-1][0]["_start"] - start) <= _GROUP_WINDOW:
+            groups[-1].append(it)
+        else:
+            groups.append([it])
+
+    scored = []
+    for g in groups:
+        cov = _bbox_coverage([i.get("GeoFootprint") for i in g], bbox)
+        scored.append((g, 1.0 if cov is None else cov))
+    full = [x for x in scored if x[1] >= _FULL_COVERAGE]
+    g, cov = full[0] if full else max(scored, key=lambda x: (round(x[1], 2), x[0][0]["_start"]))
+
+    best = g[0]
     attrs = {a["Name"]: a.get("Value") for a in best.get("Attributes", [])}
-    acq_time = datetime.fromisoformat(
-        best["ContentDate"]["Start"].replace("Z", "+00:00")
-    )
     return {
         "scene_id": best["Name"],
-        "acquisition_time": acq_time.isoformat(),
+        "acquisition_time": best["_start"].isoformat(),
         "cloud_cover_pct": float(attrs.get("cloudCover") or 0),
         "orbit": attrs.get("orbitNumber"),
         "tile_ref": attrs.get("tileId") or attrs.get("S2TileId"),
+        "coverage_pct": round(cov * 100),
+        "tiles": len(g),
     }
 
 

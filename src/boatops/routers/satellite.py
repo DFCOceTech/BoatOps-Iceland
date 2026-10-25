@@ -56,6 +56,7 @@ def get_s2_overlay(west: float, south: float, east: float, north: float,
             "X-Scene-Id": meta.get("scene_id", ""),
             "X-Acquisition-Time": meta.get("acquisition_time", ""),
             "X-Cloud-Cover": str(meta.get("cloud_cover_pct", "")),
+            "X-Coverage": str(meta.get("coverage_pct", "")),
         },
     )
 

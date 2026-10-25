@@ -9,6 +9,7 @@ type Kind = 's1' | 's2'
 
 const LAYER_ID: Record<Kind, string> = { s1: 'api-s1-overlay', s2: 'api-s2-overlay' }
 const LOOKBACK_DAYS = [1, 3, 7, 14, 30]
+const CLOUD_LIMITS = [10, 30, 60, 100]   // tile-wide cloud %, S2 only
 
 const S: Record<string, React.CSSProperties> = {
   section: { marginBottom: 24 },
@@ -50,6 +51,9 @@ export default function ImageryPanel() {
   const { bbox } = useSite()
   const [st, setSt] = useState<Record<Kind, State>>({ s1: INIT(7), s2: INIT(14) })
   const urls = useRef<Record<Kind, string | null>>({ s1: null, s2: null })
+  const cloudRef = useRef(30)
+  const [cloudMax, setCloudMax] = useState(30)
+  cloudRef.current = cloudMax
   const aborts = useRef<Record<Kind, AbortController | null>>({ s1: null, s2: null })
   const mapRef = useRef(map)
   mapRef.current = map
@@ -72,7 +76,7 @@ export default function ImageryPanel() {
       const b = bboxRef.current
       const res = kind === 's1'
         ? await getS1Overlay(b, days, ctl.signal)
-        : await getS2Overlay(b, 30, days, ctl.signal)
+        : await getS2Overlay(b, cloudRef.current, days, ctl.signal)
       if (ctl.signal.aborted) return
       const url = URL.createObjectURL(res.blob)
       urls.current[kind] = url
@@ -119,6 +123,16 @@ export default function ImageryPanel() {
             }}>
             {LOOKBACK_DAYS.map(d => <option key={d} value={d}>last {d} d</option>)}
           </select>
+          {kind === 's2' && (
+            <select aria-label="Sentinel-2 cloud limit" style={S.select} value={cloudMax}
+              onChange={e => {
+                const c = Number(e.target.value)
+                cloudRef.current = c; setCloudMax(c)
+                if (s.visible) load('s2', s.days)
+              }}>
+              {CLOUD_LIMITS.map(c => <option key={c} value={c}>≤{c}% cloud</option>)}
+            </select>
+          )}
           {s.loading && <span style={{ fontSize: 11, color: '#64748b' }}>⟳ fetching…</span>}
         </div>
         {s.error && <div style={{ ...S.hint, color: '#f87171' }}>⚠ {s.error}</div>}
@@ -126,7 +140,12 @@ export default function ImageryPanel() {
           <div style={{ ...S.hint, color: '#94a3b8' }}>
             <span style={S.badge}>{s.meta.acquisitionTime
               ? new Date(s.meta.acquisitionTime).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—'}</span>
-            {s.meta.cloudCoverPct !== null && <span style={S.badge}>☁ {s.meta.cloudCoverPct.toFixed(0)}%</span>}
+            {s.meta.cloudCoverPct !== null && <span style={S.badge}>☁ {s.meta.cloudCoverPct.toFixed(0)}% (tile)</span>}
+            {s.meta.coveragePct !== null && (
+              <span style={{ ...S.badge, color: s.meta.coveragePct >= 95 ? '#4ade80' : '#fbbf24' }}>
+                {s.meta.coveragePct >= 95 ? '✓' : '⚠ partial'} covers {s.meta.coveragePct.toFixed(0)}% of area
+              </span>
+            )}
           </div>
         )}
         <div style={S.hint}>{hint}</div>
@@ -140,7 +159,7 @@ export default function ImageryPanel() {
       {render('s1', 'Sentinel-1 SAR (ice)',
         'Radar, day/night, through cloud. Calm open water is dark; ice and wind-roughened water are bright. Scene age is shown — ice moves, so check the timestamp.')}
       {render('s2', 'Sentinel-2 true colour',
-        'Optical; shows the most recent scene under 30 % cloud within the look-back window.')}
+        'Optical. Picks the most recent pass that fully covers the area; if none does, the best-covering one (flagged ⚠ partial). Cloud % is tile-wide, not for your site — raise the limit if no scene is found.')}
     </section>
   )
 }

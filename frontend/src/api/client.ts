@@ -123,6 +123,7 @@ export interface S2OverlayResult {
   sceneId: string
   acquisitionTime: string
   cloudCoverPct: number | null
+  coveragePct: number | null   // % of the requested area the scene actually covers (S2)
 }
 
 async function fetchS2Png(path: string, signal?: AbortSignal): Promise<S2OverlayResult> {
@@ -138,7 +139,9 @@ async function fetchS2Png(path: string, signal?: AbortSignal): Promise<S2Overlay
   const acquisitionTime = res.headers.get('x-acquisition-time') ?? ''
   const cloudRaw = res.headers.get('x-cloud-cover')
   const cloudCoverPct = cloudRaw && cloudRaw !== '' ? parseFloat(cloudRaw) : null
-  return { blob, bbox, sceneId, acquisitionTime, cloudCoverPct }
+  const covRaw = res.headers.get('x-coverage')
+  const coveragePct = covRaw && covRaw !== '' ? parseFloat(covRaw) : null
+  return { blob, bbox, sceneId, acquisitionTime, cloudCoverPct, coveragePct }
 }
 
 export const getS2Overlay = (bbox: Bbox, cloudMax = 20, daysBack = 30, signal?: AbortSignal) =>

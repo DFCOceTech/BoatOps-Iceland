@@ -297,3 +297,43 @@ def test_s2_cloud_max_bounded():
 def test_wind_grid_rejects_nan():
     from fastapi.testclient import TestClient as _TC  # noqa: F401
     assert client.get("/api/weather/wind-grid?west=nan&south=63&east=-16&north=64").status_code == 422
+
+
+# ── S2 partial-coverage selection (user report: scene covered 46 % of the work area)
+
+def _poly(w, s, e, n):
+    return {"type": "Polygon", "coordinates": [[[w, s], [e, s], [e, n], [w, n], [w, s]]]}
+
+
+def _item(start, name, footprint, cloud=5.0):
+    return {"Name": name, "ContentDate": {"Start": start}, "GeoFootprint": footprint,
+            "Attributes": [{"Name": "cloudCover", "Value": cloud}]}
+
+_BB = (-16.3, 64.0, -16.1, 64.1)
+
+
+@patch("httpx.get")
+def test_prefers_older_full_coverage_over_newer_partial(mock_get):
+    partial = _item("2026-10-16T12:33:00.000Z", "NEW_PARTIAL", _poly(-16.2, 63.9, -16.0, 64.2))   # covers half
+    full = _item("2026-10-12T12:53:00.000Z", "OLD_FULL", _poly(-16.5, 63.9, -16.0, 64.2))
+    mock_get.return_value = _mock_odata_response([partial, full])
+    scene = sentinel_hub.find_best_scene(_FAKE_TOKEN, _BB)
+    assert scene["scene_id"] == "OLD_FULL" and scene["coverage_pct"] == 100
+
+
+@patch("httpx.get")
+def test_falls_back_to_highest_coverage_and_reports_it(mock_get):
+    a = _item("2026-10-16T12:33:00.000Z", "HALF", _poly(-16.2, 63.9, -16.0, 64.2))
+    b = _item("2026-10-12T12:53:00.000Z", "QUARTER", _poly(-16.15, 63.9, -16.0, 64.2))
+    mock_get.return_value = _mock_odata_response([b, a])
+    scene = sentinel_hub.find_best_scene(_FAKE_TOKEN, _BB)
+    assert scene["scene_id"] == "HALF" and scene["coverage_pct"] == 50
+
+
+@patch("httpx.get")
+def test_adjacent_tiles_of_one_pass_are_unioned(mock_get):
+    west = _item("2026-10-16T12:33:10.000Z", "TILE_W", _poly(-16.5, 63.9, -16.2, 64.2))
+    east = _item("2026-10-16T12:33:12.000Z", "TILE_E", _poly(-16.2, 63.9, -16.0, 64.2))
+    mock_get.return_value = _mock_odata_response([east, west])
+    scene = sentinel_hub.find_best_scene(_FAKE_TOKEN, _BB)
+    assert scene["coverage_pct"] == 100 and scene["tiles"] == 2
