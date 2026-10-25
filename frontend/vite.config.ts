@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': process.env.BOATOPS_API ?? 'http://localhost:8000',
     },
   },
 })

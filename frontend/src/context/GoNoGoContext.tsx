@@ -3,7 +3,6 @@ import { createContext, useContext, useState, useCallback } from 'react'
 export interface GoNoGoValues {
   windKt:       number | null
   gustKt:       number | null
-  hsM:          number | null
   cloudPct:     number | null
   solarElevDeg: number | null
   lastUpdated:  Date | null
@@ -17,7 +16,7 @@ interface GoNoGoContextType {
 }
 
 const INIT: GoNoGoValues = {
-  windKt: null, gustKt: null, hsM: null, cloudPct: null, solarElevDeg: null, lastUpdated: null,
+  windKt: null, gustKt: null, cloudPct: null, solarElevDeg: null, lastUpdated: null,
 }
 
 const GoNoGoContext = createContext<GoNoGoContextType>({

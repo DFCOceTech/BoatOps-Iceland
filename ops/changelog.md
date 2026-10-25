@@ -2,6 +2,13 @@
 
 Rolling 2-week work log. Remove entries older than 2 weeks.
 
+## 2026-10-25 — Iceland (Jökulsárlón) fork
+*Instruction: "create a plain fork with a bespoke setup for the lagoon; ice is mobile, deployment site changes daily."*
+- Forked from BoatOps `fix/docker-build-frontend-shapely`; removed CMEMS Baltic code (waves, currents, SST, salinity, chlorophyll, bathymetry, isobaths), EMODnet, GBIF, MARNET stations, click assessment.
+- Added movable work site (SiteContext/SitePanel; URL hash; saved sites; GeoJSON export), tide/sea-state (Open-Meteo Marine), Sentinel-1 SAR overlay, `days_back` look-back for S1/S2, Iceland Meteoalarm, bbox/grid limits.
+- Fixed overpass prediction to use swath width (agent-initiated: found empty results in live test).
+- Slimmed Docker/conda envs (no GDAL/xarray/matplotlib); `.env.example` has CDSE only.
+
 ## 2026-05-21
 
 **Station markers, click assessment, currents units — feature/improvements-may-2026** (user instruction)

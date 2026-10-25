@@ -4,8 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { useMapContext } from '../context/MapContext'
 import { DARK_BASEMAP_STYLE } from '../config/basemapStyle'
 
-const BALTIC_CENTER: [number, number] = [12.08, 54.18]  // [lon, lat]
-const INITIAL_ZOOM = 8
+const LAGOON_CENTER: [number, number] = [-16.179, 64.048]  // [lon, lat] Jökulsárlón
+const INITIAL_ZOOM = 12
 
 export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -17,7 +17,7 @@ export default function MapView() {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: DARK_BASEMAP_STYLE,
-      center: BALTIC_CENTER,
+      center: LAGOON_CENTER,
       zoom: INITIAL_ZOOM,
     })
 

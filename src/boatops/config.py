@@ -8,11 +8,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # CMEMS (copernicusmarine)
-    copernicusmarine_service_username: str = ""
-    copernicusmarine_service_password: str = ""
-
-    # CDSE (Copernicus Data Space — Sentinel-2)
+    # CDSE (Copernicus Data Space — Sentinel-1 / Sentinel-2 imagery)
     cdse_email: str = ""
     cdse_password: str = ""
 

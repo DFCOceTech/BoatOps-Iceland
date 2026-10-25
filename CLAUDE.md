@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+> **BoatOps Iceland** (Jökulsárlón fork). Baltic/CMEMS capabilities were removed; the Iceland spec is `openspec/capabilities/iceland-site/spec.md`. `_bmad/`, `epics/` and other specs are inherited Baltic history.
+
 Claude Code (claude.ai/code) follows these instructions when coding in this repository.
 
 ## Anthropic internal prompt augmentation
@@ -51,10 +53,10 @@ E2E tests must exercise the full deployed stack, not just unit tests against moc
 
 ```bash
 # Environment
-conda activate boatops
+conda activate boatops-iceland
 
 # Install / update deps
-pip install -e ".[dev]"          # or: pip install -r requirements.txt
+pip install -e src
 
 # Unit tests
 pytest tests/ -v --tb=short

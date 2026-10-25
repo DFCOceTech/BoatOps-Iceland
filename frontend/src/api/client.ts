@@ -5,38 +5,18 @@
  * custom headers (X-Bbox, X-Timestamp, X-Colorscale) alongside the image data.
  */
 
-const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
-const CENTER = { lat: 54.18, lon: 12.08 }
+// Regional wind-field extent (SE Iceland); site imagery bboxes come from SiteContext.
+export const AOI = { west: -17.2, south: 63.6, east: -15.2, north: 64.5 }
+export interface Bbox { west: number; south: number; east: number; north: number }
+// Jökulsárlón lagoon (approx.) — default site
+const CENTER = { lat: 64.048, lon: -16.179 }
 
 // ── shared types ─────────────────────────────────────────────────────────────
-
-export interface BlobResult {
-  blob: Blob
-  bbox: [number, number, number, number]  // [west, south, east, north]
-  timestamp: string
-  colorscale: { vmin: number; vmax: number; cmap: string; scale?: string; hypoxia_threshold_mmol_m3?: number }
-}
 
 async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(path)
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`)
   return res.json() as Promise<T>
-}
-
-async function fetchPng(path: string): Promise<BlobResult> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`)
-  const blob = await res.blob()
-  const bboxStr = res.headers.get('x-bbox') ?? '9.5,53.5,15.0,56.0'
-  const bboxRaw = bboxStr.split(',').map(Number)
-  if (bboxRaw.length !== 4 || bboxRaw.some(isNaN))
-    throw new Error(`Malformed X-Bbox header: "${bboxStr}"`)
-  const bbox = bboxRaw as [number, number, number, number]
-  const timestamp = res.headers.get('x-timestamp') ?? ''
-  let colorscale: BlobResult['colorscale'] = { vmin: 0, vmax: 1, cmap: '' }
-  try { colorscale = JSON.parse(res.headers.get('x-colorscale') ?? '{}') }
-  catch { /* malformed header — use safe default */ }
-  return { blob, bbox, timestamp, colorscale }
 }
 
 // ── /health ──────────────────────────────────────────────────────────────────
@@ -78,7 +58,7 @@ export interface AdvisoryCollection {
 export const getWeatherForecast = (lat = CENTER.lat, lon = CENTER.lon) =>
   fetchJson<WeatherForecast>(`/api/weather/forecast?lat=${lat}&lon=${lon}`)
 
-export const getWeatherAdvisories = (country = 'DE') =>
+export const getWeatherAdvisories = (country = 'IS') =>
   fetchJson<AdvisoryCollection>(`/api/weather/advisories?country=${country}`)
 
 // u[row][col]: row 0 = southernmost lat, col 0 = westernmost lon
@@ -96,30 +76,7 @@ export interface WindGrid {
 
 export const getWindGrid = (bbox = AOI, hour?: number) =>
   fetchJson<WindGrid>(
-    `/api/weather/wind-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
-    (hour !== undefined ? `&hour=${hour}` : '')
-  )
-
-export const getCurrentsGrid = (bbox = AOI, hour?: number) =>
-  fetchJson<WindGrid>(
-    `/api/map/currents-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
-    (hour !== undefined ? `&hour=${hour}` : '')
-  )
-
-// ── /api/waves ───────────────────────────────────────────────────────────────
-
-export interface WaveForecast {
-  hs_m: number; vmdr_deg: number
-  grid_lat: number; grid_lon: number
-  timestamp: string; last_updated: string
-}
-
-export const getWaveForecast = (lat = CENTER.lat, lon = CENTER.lon) =>
-  fetchJson<WaveForecast>(`/api/waves/forecast?lat=${lat}&lon=${lon}`)
-
-export const getWaveOverlay = (bbox = AOI, hour?: number) =>
-  fetchPng(
-    `/api/waves/overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
+    `/api/weather/wind-grid?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}&step=0.1` +
     (hour !== undefined ? `&hour=${hour}` : '')
   )
 
@@ -154,7 +111,7 @@ export interface Overpass {
   track_coords: [number, number][]  // [[lon, lat], ...] ground track polyline
 }
 
-export const getSatelliteOverpasses = (bbox = AOI, days = 7) =>
+export const getSatelliteOverpasses = (bbox: Bbox = AOI, days = 7) =>
   fetchJson<Overpass[]>(
     `/api/satellite/overpasses?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}&days=${days}`
   )
@@ -172,7 +129,7 @@ async function fetchS2Png(path: string, signal?: AbortSignal): Promise<S2Overlay
   const res = await fetch(path, signal ? { signal } : undefined)
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`)
   const blob = await res.blob()
-  const bboxStr = res.headers.get('x-bbox') ?? '9.5,53.5,15.0,56.0'
+  const bboxStr = res.headers.get('x-bbox') ?? '-17.2,63.6,-15.2,64.5'
   const bboxRaw = bboxStr.split(',').map(Number)
   if (bboxRaw.length !== 4 || bboxRaw.some(isNaN))
     throw new Error(`Malformed X-Bbox header: "${bboxStr}"`)
@@ -184,29 +141,32 @@ async function fetchS2Png(path: string, signal?: AbortSignal): Promise<S2Overlay
   return { blob, bbox, sceneId, acquisitionTime, cloudCoverPct }
 }
 
-export const getS2Overlay = (bbox = AOI, cloudMax = 20, signal?: AbortSignal) =>
+export const getS2Overlay = (bbox: Bbox, cloudMax = 20, daysBack = 30, signal?: AbortSignal) =>
   fetchS2Png(
-    `/api/satellite/s2-overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}&cloud_max=${cloudMax}`,
+    `/api/satellite/s2-overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
+    `&cloud_max=${cloudMax}&days_back=${daysBack}`,
     signal
   )
 
-// ── /api/map ─────────────────────────────────────────────────────────────────
+/** Sentinel-1 SAR (radar) — sees ice through cloud and polar night. */
+export const getS1Overlay = (bbox: Bbox, daysBack = 7, signal?: AbortSignal) =>
+  fetchS2Png(
+    `/api/satellite/s1-overlay?west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}` +
+    `&days_back=${daysBack}`,
+    signal
+  )
 
-const bboxQs = (bbox = AOI) =>
-  `west=${bbox.west}&south=${bbox.south}&east=${bbox.east}&north=${bbox.north}`
+// ── /api/marine ──────────────────────────────────────────────────────────────
 
-export const getIsobaths = (bbox = AOI) =>
-  fetchJson<{ type: string; features: Array<{
-    type: string
-    geometry: { type: string; coordinates: [number, number][] }
-    properties: { depth_m: number }
-  }> }>(`/api/map/isobaths?${bboxQs(bbox)}`)
+export interface MarineForecast {
+  times: string[]
+  sea_level_m: (number | null)[]
+  wave_height_m: (number | null)[]
+  sst_c: (number | null)[]
+  grid_lat: number | null
+  grid_lon: number | null
+}
 
-const hourQs = (hour?: number) => (hour !== undefined ? `&hour=${hour}` : '')
+export const getMarineForecast = (lat = CENTER.lat, lon = CENTER.lon) =>
+  fetchJson<MarineForecast>(`/api/marine/forecast?lat=${lat}&lon=${lon}`)
 
-export const getBathymetry  = (bbox = AOI)              => fetchPng(`/api/map/bathymetry?${bboxQs(bbox)}`)
-export const getSst         = (bbox = AOI, hour?: number) => fetchPng(`/api/map/sst?${bboxQs(bbox)}${hourQs(hour)}`)
-export const getSalinity    = (bbox = AOI, hour?: number) => fetchPng(`/api/map/salinity?${bboxQs(bbox)}${hourQs(hour)}`)
-export const getCurrents    = (bbox = AOI, hour?: number) => fetchPng(`/api/map/currents?${bboxQs(bbox)}${hourQs(hour)}`)
-export const getChlorophyll = (bbox = AOI, hour?: number) => fetchPng(`/api/map/chlorophyll?${bboxQs(bbox)}${hourQs(hour)}`)
-export const getOxygen      = (bbox = AOI)              => fetchPng(`/api/map/oxygen?${bboxQs(bbox)}`)

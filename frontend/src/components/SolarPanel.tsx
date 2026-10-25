@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useFetch } from '../hooks/useFetch'
 import { getSolarTimes, getSolarElevation } from '../api/client'
+import { useSite } from '../context/SiteContext'
 import { useGoNoGo } from '../context/GoNoGoContext'
 
-const CENTER = { lat: 54.18, lon: 12.08 }
-const BERLIN_TZ = 'Europe/Berlin'
+const LOCAL_TZ = 'Atlantic/Reykjavik'
 
 // Python isoformat() emits "+00:00" not "Z"; new Date() handles both correctly.
 // Only bare strings (no timezone) need a "Z" appended to be treated as UTC.
@@ -19,7 +19,7 @@ function toLocalTime(isoUtc: string | null): string {
   const d = parseIso(isoUtc)
   if (isNaN(d.getTime())) return '—'
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: BERLIN_TZ, hour: '2-digit', minute: '2-digit',
+    timeZone: LOCAL_TZ, hour: '2-digit', minute: '2-digit',
   }).format(d)
 }
 
@@ -107,6 +107,7 @@ const S: Record<string, React.CSSProperties> = {
 }
 
 export default function SolarPanel() {
+  const { active: CENTER } = useSite()
   const times = useFetch(() => getSolarTimes(CENTER.lat, CENTER.lon))
   const elevation = useFetch(() => getSolarElevation(CENTER.lat, CENTER.lon))
   const { update, refreshSignal } = useGoNoGo()
@@ -185,7 +186,7 @@ export default function SolarPanel() {
             </span>
           </div>
           <div style={{ fontSize: 10, color: '#475569', marginTop: 6, textAlign: 'right' }}>
-            Local time (Berlin / CET/CEST)
+            Local time (Iceland, UTC)
           </div>
         </div>
       )}

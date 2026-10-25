@@ -3,13 +3,11 @@ import type maplibregl from 'maplibre-gl'
 import { useMapContext } from '../context/MapContext'
 import { useTimeContext } from '../context/TimeContext'
 import { useFetch } from '../hooks/useFetch'
-import { getSatelliteOverpasses, getS2Overlay, getSolarTimes } from '../api/client'
+import { getSatelliteOverpasses, getSolarTimes } from '../api/client'
+import { useSite } from '../context/SiteContext'
 import type { Overpass } from '../api/client'
 
-const CENTER = { lat: 54.18, lon: 12.08 }
-const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
-const BERLIN_TZ = 'Europe/Berlin'
-const S2_LAYER_ID       = 'api-s2-overlay'
+const LOCAL_TZ = 'Atlantic/Reykjavik'   // UTC+0 all year
 const TRACK_SOURCE_ID   = 'sat-tracks-src'
 const TRACK_LAYER_ID    = 'sat-tracks'
 const HL_SOURCE_ID      = 'sat-track-hl-src'
@@ -23,8 +21,8 @@ function parseIso(iso: string): Date {
 
 function toLocalDayTime(isoUtc: string): string {
   const d = parseIso(isoUtc)
-  const day  = new Intl.DateTimeFormat('en-GB', { timeZone: BERLIN_TZ, weekday: 'short' }).format(d)
-  const time = new Intl.DateTimeFormat('en-GB', { timeZone: BERLIN_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
+  const day  = new Intl.DateTimeFormat('en-GB', { timeZone: LOCAL_TZ, weekday: 'short' }).format(d)
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: LOCAL_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
   return `${day} ${time}`
 }
 
@@ -146,36 +144,7 @@ function hideLayer(map: maplibregl.Map, layerId: string) {
   try { if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'none') } catch {}
 }
 
-// ── S2 helpers ────────────────────────────────────────────────────────────────
-
-function addS2Layer(map: maplibregl.Map, blobUrl: string, bbox: [number, number, number, number]) {
-  const [west, south, east, north] = bbox
-  try {
-    if (!map.getSource(S2_LAYER_ID)) {
-      map.addSource(S2_LAYER_ID, {
-        type: 'image', url: blobUrl,
-        coordinates: [[west, north], [east, north], [east, south], [west, south]],
-      })
-    }
-    if (!map.getLayer(S2_LAYER_ID))
-      map.addLayer({ id: S2_LAYER_ID, type: 'raster', source: S2_LAYER_ID, paint: { 'raster-opacity': 0.85 } })
-  } catch (err) { console.warn('[SatellitePanel] addS2Layer:', err) }
-}
-
-function removeS2Layer(map: maplibregl.Map) {
-  try {
-    if (map.getLayer(S2_LAYER_ID)) map.removeLayer(S2_LAYER_ID)
-    if (map.getSource(S2_LAYER_ID)) map.removeSource(S2_LAYER_ID)
-  } catch {}
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-interface S2State {
-  visible: boolean; loading: boolean; error: string | null
-  meta: { sceneId: string; acquisitionTime: string; cloudCoverPct: number | null } | null
-}
-const S2_INIT: S2State = { visible: false, loading: false, error: null, meta: null }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -205,15 +174,13 @@ const S: Record<string, React.CSSProperties> = {
 export default function SatellitePanel() {
   const { map } = useMapContext()
   const { setForecastHour } = useTimeContext()
-  const overpasses = useFetch(() => getSatelliteOverpasses(AOI))
+  const { active: CENTER, bbox } = useSite()
+  const overpasses = useFetch(() => getSatelliteOverpasses(bbox))
   const solarTimes = useFetch(() => getSolarTimes(CENTER.lat, CENTER.lon))
-  const [s2, setS2] = useState<S2State>(S2_INIT)
   const [tracksVisible,  setTracksVisible]  = useState(false)
   const [selectedAos,    setSelectedAos]    = useState<string | null>(null)
 
   const mountedRef  = useRef(true)
-  const abortRef    = useRef<AbortController | null>(null)
-  const blobUrlRef  = useRef<string | null>(null)
   const mapRef      = useRef(map)
   mapRef.current    = map
 
@@ -225,11 +192,8 @@ export default function SatellitePanel() {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      abortRef.current?.abort()
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
       const m = mapRef.current
       if (m) {
-        removeS2Layer(m)
         removeLayer(m, TRACK_LAYER_ID, TRACK_SOURCE_ID)
         removeLayer(m, HL_LAYER_ID, HL_SOURCE_ID)
       }
@@ -292,52 +256,6 @@ export default function SatellitePanel() {
     setSelectedAos(p.aos_utc)  // highlight this pass
   }, [setForecastHour])
 
-  // ── S2 toggle ────────────────────────────────────────────────────────────
-
-  const toggleS2 = useCallback(async () => {
-    if (!mapRef.current) return
-
-    if (s2.visible || blobUrlRef.current) {
-      removeS2Layer(mapRef.current)
-      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null }
-      setS2(S2_INIT)
-      return
-    }
-
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    setS2(prev => ({ ...prev, loading: true, error: null }))
-
-    try {
-      const result = await getS2Overlay(AOI, 20, controller.signal)
-      if (controller.signal.aborted || !mountedRef.current) return
-
-      const blobUrl = URL.createObjectURL(result.blob)
-      blobUrlRef.current = blobUrl
-
-      const doAdd = () => {
-        if (!mountedRef.current) return
-        const m = mapRef.current
-        if (m) addS2Layer(m, blobUrl, result.bbox)
-      }
-
-      const m = mapRef.current
-      if (m && m.isStyleLoaded()) doAdd()
-      else if (m) m.once('load', doAdd)
-
-      setS2({
-        visible: true, loading: false, error: null,
-        meta: { sceneId: result.sceneId, acquisitionTime: result.acquisitionTime,
-                cloudCoverPct: result.cloudCoverPct },
-      })
-    } catch (err) {
-      if (controller.signal.aborted || !mountedRef.current) return
-      setS2(prev => ({ ...prev, loading: false,
-        error: err instanceof Error ? err.message : 'Fetch failed' }))
-    }
-  }, [s2.visible])
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   const groups  = overpasses.data ? groupByPlatform(overpasses.data) : []
@@ -386,7 +304,7 @@ export default function SatellitePanel() {
           <table style={S.table}>
             <thead>
               <tr>
-                <th style={S.th}>AOS (Berlin)</th>
+                <th style={S.th}>AOS (UTC)</th>
                 <th style={{ ...S.th, textAlign: 'center' as const }}>Dur</th>
                 <th style={{ ...S.th, textAlign: 'center' as const }}>Elev</th>
               </tr>
@@ -424,40 +342,6 @@ export default function SatellitePanel() {
         />
         Show all satellite tracks
       </label>
-
-      {/* S2 imagery toggle */}
-      <label style={{ ...S.overlayRow, marginTop: 6 }}>
-        <input
-          type="checkbox"
-          style={S.checkbox}
-          checked={s2.visible}
-          disabled={s2.loading}
-          onChange={toggleS2}
-        />
-        Show Sentinel-2 overlay on map
-        {s2.loading && <span style={{ marginLeft: 4, color: '#64748b', fontSize: 11 }}>⟳ fetching…</span>}
-        {s2.error  && <span style={{ fontSize: 11, color: '#f87171', marginLeft: 4 }}>⚠ failed</span>}
-      </label>
-
-      {s2.meta && (
-        <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, paddingLeft: 23 }}>
-          <span style={S.metaBadge}>
-            {s2.meta.acquisitionTime
-              ? parseIso(s2.meta.acquisitionTime).toLocaleDateString('en-GB', {
-                  day: '2-digit', month: 'short', year: 'numeric' })
-              : '—'}
-          </span>
-          {s2.meta.cloudCoverPct !== null && (
-            <span style={{ ...S.metaBadge, marginLeft: 4 }}>☁ {s2.meta.cloudCoverPct.toFixed(0)}%</span>
-          )}
-          {s2.meta.sceneId && (
-            <div style={{ marginTop: 3, color: '#334155', fontSize: 10,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {s2.meta.sceneId}
-            </div>
-          )}
-        </div>
-      )}
     </section>
   )
 }

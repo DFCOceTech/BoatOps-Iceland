@@ -6,7 +6,8 @@ from boatops.services import meteoalarm, openmeteo
 router = APIRouter(prefix="/api/weather", tags=["weather"])
 
 _MAX_BBOX_SPAN = 30.0   # degrees — prevents grid explosion
-_MIN_STEP      = 0.1    # degrees — prevents million-point grids
+_MIN_STEP      = 0.02   # degrees — prevents million-point grids
+_MAX_POINTS    = 400    # grid nodes per request (one Open-Meteo call)
 
 
 def _validate_bbox_and_step(west: float, south: float, east: float, north: float, step: float) -> None:
@@ -16,6 +17,9 @@ def _validate_bbox_and_step(west: float, south: float, east: float, north: float
         raise HTTPException(status_code=422, detail=f"bbox span must be ≤{_MAX_BBOX_SPAN}°")
     if step < _MIN_STEP:
         raise HTTPException(status_code=422, detail=f"step must be ≥{_MIN_STEP}°")
+    n_points = (round((east - west) / step) + 1) * (round((north - south) / step) + 1)
+    if n_points > _MAX_POINTS:
+        raise HTTPException(status_code=422, detail=f"grid too dense ({n_points} > {_MAX_POINTS} points); increase step")
 
 
 @router.get("/forecast")
@@ -30,8 +34,8 @@ def get_forecast(lat: float, lon: float):
 
 @router.get("/wind-grid")
 def get_wind_grid(
-    west: float = 9.5, south: float = 53.5,
-    east: float = 15.0, north: float = 56.0,
+    west: float = -16.5, south: float = 63.9,
+    east: float = -15.8, north: float = 64.2,
     step: float = 0.25,
     hour: int | None = None,
 ):
@@ -45,7 +49,7 @@ def get_wind_grid(
 
 
 @router.get("/advisories")
-def get_advisories(country: str = "DE"):
+def get_advisories(country: str = "IS"):
     try:
         return meteoalarm.get_advisories(country)
     except ValueError as exc:

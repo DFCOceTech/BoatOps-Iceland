@@ -30,15 +30,20 @@ const MOCK_WEATHER = {
 
 const MOCK_ADVISORIES = { type: 'FeatureCollection', features: [] }
 
-const MOCK_WAVES = {
-  hs_m: 0.31, vmdr_deg: 245, grid_lat: 54.17, grid_lon: 12.08,
-  timestamp: '2026-05-03T06:00',
+const NOW_H = new Date().toISOString().slice(0, 13) + ':00'
+const MOCK_MARINE = {
+  times: Array.from({ length: 96 }, (_, i) => new Date(new Date(NOW_H + ':00Z').getTime() + i * 3600_000)
+    .toISOString().slice(0, 16)),
+  sea_level_m: Array.from({ length: 96 }, (_, i) => Math.sin((i / 12.4) * 2 * Math.PI)),
+  wave_height_m: Array(96).fill(1.8),
+  sst_c: Array(96).fill(7.4),
+  grid_lat: 63.96, grid_lon: -16.21,
 }
 
 // Use +00:00 format (what Python's isoformat() actually emits) to catch the
 // "endsWith('Z') ? iso : iso+'Z'" bug that crashed the app in production.
 const MOCK_SOLAR_TIMES = {
-  date: '2026-05-03', lat: 54.18, lon: 12.08,
+  date: '2026-05-03', lat: 64.048, lon: -16.179,
   sunrise: '2026-05-03T03:42:00+00:00', sunset:  '2026-05-03T19:18:00+00:00',
   solar_noon: '2026-05-03T11:30:00+00:00',
   dawn_civil:  '2026-05-03T03:08:00+00:00', dusk_civil:  '2026-05-03T19:52:00+00:00',
@@ -65,7 +70,7 @@ const TINY_PNG_B64 =
   'AABjkB6QAAAABJRU5ErkJggg=='
 
 const PNG_HEADERS = {
-  'x-bbox':       '9.5,53.5,15.0,56.0',
+  'x-bbox':       '-16.29,63.99,-16.07,64.10',
   'x-timestamp':  '2026-05-03T10:00:00',
   'x-colorscale': JSON.stringify({ vmin: 0, vmax: 5, cmap: 'amp' }),
 }
@@ -79,9 +84,11 @@ async function mockApis(page: Page) {
   await page.route('**/api/weather/advisories**', r =>
     r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(MOCK_ADVISORIES) }))
-  await page.route('**/api/waves/forecast**', r =>
+  await page.route('**/api/marine/forecast**', r =>
     r.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify(MOCK_WAVES) }))
+      body: JSON.stringify(MOCK_MARINE) }))
+  await page.route('**/api/weather/wind-grid**', r =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }))
   await page.route('**/api/solar/times**', r =>
     r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(MOCK_SOLAR_TIMES) }))
@@ -91,27 +98,18 @@ async function mockApis(page: Page) {
   await page.route('**/api/satellite/overpasses**', r =>
     r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(MOCK_OVERPASSES) }))
-  for (const path of [
-    '**/api/waves/overlay**', '**/api/map/bathymetry**', '**/api/map/sst**',
-    '**/api/map/salinity**',  '**/api/map/currents**',   '**/api/map/chlorophyll**',
-    '**/api/map/oxygen**',
-  ]) {
-    await page.route(path, r => r.fulfill({
-      status: 200, contentType: 'image/png',
-      headers: PNG_HEADERS,
-      body: Buffer.from(TINY_PNG_B64, 'base64'),
-    }))
-  }
-  await page.route('**/api/satellite/s2-overlay**', r => r.fulfill({
+  for (const path of ['**/api/satellite/s2-overlay**', '**/api/satellite/s1-overlay**']) {
+  await page.route(path, r => r.fulfill({
     status: 200, contentType: 'image/png',
     headers: {
-      'x-bbox': '9.5,53.5,15.0,56.0',
+      'x-bbox': '-16.29,63.99,-16.07,64.10',
       'x-scene-id': 'S2A_MSIL2A_20260503T093041',
       'x-acquisition-time': '2026-05-03T09:30:41',
       'x-cloud-cover': '8.3',
     },
     body: Buffer.from(TINY_PNG_B64, 'base64'),
   }))
+  }
 }
 
 // Scroll a sidebar section into view by its heading text.
@@ -149,16 +147,15 @@ test.describe('E2E-002: Go/No-Go dashboard', () => {
   test('overall verdict badge is visible with correct verdict', async ({ page }) => {
     await mockApis(page)
     await page.goto('/')
-    // wind 13.6 kt (green), gusts 18.5 kt (green), Hs 0.31 m (green),
+    // wind 13.6 kt (green), gusts 18.5 kt (green),
     // cloud 35% (amber ≤50), solar 42.3° (green) → one amber → CAUTION
     await expect(page.getByText('CAUTION')).toBeVisible({ timeout: 10_000 })
   })
 
-  test('per-capability rows: wind, waves, solar values visible', async ({ page }) => {
+  test('per-capability rows: wind and solar values visible', async ({ page }) => {
     await mockApis(page)
     await page.goto('/')
     await expect(page.getByText('13.6 kt')).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText('0.31 m Hs')).toBeVisible({ timeout: 8_000 })
     // Solar elevation appears in both the dashboard row and the gauge SVG — use first()
     await expect(page.getByText('42.3°').first()).toBeVisible({ timeout: 8_000 })
   })
@@ -178,7 +175,7 @@ test.describe('E2E-002: Go/No-Go dashboard', () => {
     await page.getByText('Reset defaults').click()
     await expect(inputs.first()).toHaveValue('15')
     // Save closes modal
-    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Threshold Settings')).not.toBeVisible()
   })
 
@@ -211,14 +208,89 @@ test.describe('E2E-003: Weather panel', () => {
   })
 })
 
-test.describe('E2E-004: Wave panel', () => {
-  test('Hs value and Go/Caution/No-Go label visible', async ({ page }) => {
+test.describe('E2E-004: Tide panel', () => {
+  test('sea level, offshore Hs and next tide times visible', async ({ page }) => {
     await mockApis(page)
     await page.goto('/')
-    await scrollToSection(page, 'Waves')
-    // 0.31 m ≤ 0.4 → Go
-    await expect(page.getByText('Go').first()).toBeVisible({ timeout: 8_000 })
-    await expect(page.getByText('0.31').first()).toBeVisible()
+    await scrollToSection(page, 'Tide')
+    await expect(page.getByText(/Sea level now/)).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText(/High tide|Low tide/).first()).toBeVisible()
+    await expect(page.getByText(/not conditions inside the lagoon/)).toBeVisible()
+  })
+})
+
+test.describe('E2E-010: Work site (Iceland)', () => {
+  test('defaults to the lagoon and carries the site in the URL', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await expect(page.getByText('64.04800°N')).toBeVisible({ timeout: 8_000 })
+    await expect.poll(() => page.url()).toContain('#site=64.04800,-16.17900')
+  })
+
+  test('opening a shared #site= link restores that site', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/#site=64.0610,-16.2000')
+    await expect(page.getByText('64.06100°N')).toBeVisible({ timeout: 8_000 })
+  })
+
+  test('typing new coordinates moves the site and refetches weather for it', async ({ page }) => {
+    await mockApis(page)
+    const seen: string[] = []
+    await page.route('**/api/weather/forecast**', (r: Route) => {
+      seen.push(r.request().url())
+      return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_WEATHER) })
+    })
+    await page.goto('/')
+    await page.getByLabel('Latitude').fill('64.0700')
+    await page.getByLabel('Longitude').fill('-16.2100')
+    await page.getByRole('button', { name: 'Go', exact: true }).click()
+    await expect.poll(() => seen.some(u => u.includes('lat=64.07') && u.includes('lon=-16.21'))).toBe(true)
+  })
+
+  test('rejects out-of-range coordinates', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await page.getByLabel('Latitude').fill('123')
+    await page.getByRole('button', { name: 'Go', exact: true }).click()
+    await expect(page.getByText('64.04800°N')).toBeVisible()
+  })
+
+  test('saved sites persist across reload', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    await page.getByLabel('Site name').fill('Ice edge Mon')
+    await page.getByRole('button', { name: 'Save site' }).click()
+    await expect(page.getByRole('button', { name: 'Ice edge Mon', exact: true })).toBeVisible()
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Ice edge Mon', exact: true })).toBeVisible()
+  })
+})
+
+test.describe('E2E-011: Sentinel-1 / Sentinel-2 imagery', () => {
+  test('S1 toggle fetches the site bbox and shows scene metadata', async ({ page }) => {
+    await mockApis(page)
+    let url = ''
+    await page.route('**/api/satellite/s1-overlay**', (r: Route) => {
+      url = r.request().url()
+      return r.fulfill({ status: 200, contentType: 'image/png',
+        headers: { 'x-bbox': '-16.29,63.99,-16.07,64.10', 'x-scene-id': 'S1A_TEST',
+                   'x-acquisition-time': '2026-05-03T07:00:00+00:00' },
+        body: Buffer.from(TINY_PNG_B64, 'base64') })
+    })
+    await page.goto('/')
+    await page.locator('label').filter({ hasText: 'Sentinel-1 SAR' }).locator('input').check()
+    await expect(page.getByText(/2026-05-03 07:00 UTC/)).toBeVisible({ timeout: 8_000 })
+    expect(url).toContain('days_back=7')
+    expect(url).toMatch(/west=-16\.\d+/)
+  })
+
+  test('S1 failure (no scene) shows an error without breaking the page', async ({ page }) => {
+    await mockApis(page)
+    await page.route('**/api/satellite/s1-overlay**', r => r.fulfill({ status: 404, body: 'none' }))
+    await page.goto('/')
+    await page.locator('label').filter({ hasText: 'Sentinel-1 SAR' }).locator('input').check()
+    await expect(page.getByText(/404/)).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText('CAUTION')).toBeVisible()
   })
 })
 
@@ -257,15 +329,15 @@ test.describe('E2E-007: Layer panel', () => {
 })
 
 test.describe('E2E-008: Error states degrade gracefully (NFR-06)', () => {
-  test('weather API failure shows error; waves and solar still render', async ({ page }) => {
+  test('weather API failure shows error; tide and solar still render', async ({ page }) => {
     await page.route('**/api/weather/forecast**', r =>
       r.fulfill({ status: 500, body: 'Internal Server Error' }))
     await page.route('**/api/weather/advisories**', r =>
       r.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify(MOCK_ADVISORIES) }))
-    await page.route('**/api/waves/forecast**', r =>
+    await page.route('**/api/marine/forecast**', r =>
       r.fulfill({ status: 200, contentType: 'application/json',
-        body: JSON.stringify(MOCK_WAVES) }))
+        body: JSON.stringify(MOCK_MARINE) }))
     await page.route('**/api/solar/times**', r =>
       r.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify(MOCK_SOLAR_TIMES) }))
@@ -284,9 +356,9 @@ test.describe('E2E-008: Error states degrade gracefully (NFR-06)', () => {
     await expect(page.locator('p').filter({ hasText: /500/ }))
       .toBeVisible({ timeout: 8_000 })
 
-    // Waves panel is unaffected
-    await scrollToSection(page, 'Waves')
-    await expect(page.getByText('0.31').first()).toBeVisible()
+    // Tide panel is unaffected
+    await scrollToSection(page, 'Tide')
+    await expect(page.getByText(/Sea level now/)).toBeVisible()
 
     // Solar panel is unaffected
     await scrollToSection(page, 'Solar')
@@ -300,9 +372,9 @@ test.describe('E2E-008: Error states degrade gracefully (NFR-06)', () => {
     await page.route('**/api/weather/advisories**', r =>
       r.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify(MOCK_ADVISORIES) }))
-    await page.route('**/api/waves/forecast**', r =>
+    await page.route('**/api/marine/forecast**', r =>
       r.fulfill({ status: 200, contentType: 'application/json',
-        body: JSON.stringify(MOCK_WAVES) }))
+        body: JSON.stringify(MOCK_MARINE) }))
     await page.route('**/api/solar/times**', r =>
       r.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify(MOCK_SOLAR_TIMES) }))
@@ -314,7 +386,7 @@ test.describe('E2E-008: Error states degrade gracefully (NFR-06)', () => {
         body: JSON.stringify(MOCK_OVERPASSES) }))
 
     await page.goto('/')
-    // Let waves/solar resolve so we can verify verdict stays pending despite them loading
+    // Let tide/solar resolve so we can verify verdict stays pending despite them loading
     await page.waitForTimeout(1000)
     await expect(page.getByText('AWAITING DATA')).toBeVisible({ timeout: 8_000 })
   })

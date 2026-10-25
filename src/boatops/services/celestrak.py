@@ -32,21 +32,32 @@ def _solar_elevation(observer, t) -> float:
 
 _GP_URL = "https://celestrak.org/NORAD/elements/gp.php"
 
+# swath_km: imaging swath width — a pass 'covers' a site if the swath, not just the nadir track, reaches it.
 # daytime_only=False: SAR sensors work at night; daytime_only=True: optical sensors need sunlit ground
 SATELLITE_CATALOG: dict[str, dict] = {
-    "Sentinel-1A":        {"norad": 39634, "daytime_only": False},
-    "Sentinel-1C":        {"norad": 62261, "daytime_only": False},
-    "Sentinel-2A":        {"norad": 40697, "daytime_only": True},
-    "Sentinel-2B":        {"norad": 42063, "daytime_only": True},
-    "Sentinel-3A":        {"norad": 41335, "daytime_only": True},
-    "Sentinel-3B":        {"norad": 43437, "daytime_only": True},
-    "Suomi-NPP (VIIRS)":  {"norad": 37849, "daytime_only": True},
-    "NOAA-20 (VIIRS)":    {"norad": 43013, "daytime_only": True},
-    "Landsat 8":          {"norad": 39084, "daytime_only": True},
-    "Landsat 9":          {"norad": 49260, "daytime_only": True},
+    "Sentinel-1A":        {"norad": 39634, "daytime_only": False, "swath_km": 250},
+    "Sentinel-1C":        {"norad": 62261, "daytime_only": False, "swath_km": 250},
+    "Sentinel-2A":        {"norad": 40697, "daytime_only": True, "swath_km": 290},
+    "Sentinel-2B":        {"norad": 42063, "daytime_only": True, "swath_km": 290},
+    "Sentinel-3A":        {"norad": 41335, "daytime_only": True, "swath_km": 1270},
+    "Sentinel-3B":        {"norad": 43437, "daytime_only": True, "swath_km": 1270},
+    "Suomi-NPP (VIIRS)":  {"norad": 37849, "daytime_only": True, "swath_km": 3000},
+    "NOAA-20 (VIIRS)":    {"norad": 43013, "daytime_only": True, "swath_km": 3000},
+    "Landsat 8":          {"norad": 39084, "daytime_only": True, "swath_km": 185},
+    "Landsat 9":          {"norad": 49260, "daytime_only": True, "swath_km": 185},
 }
 
 _ts = load.timescale()
+
+
+def swath_aoi(bbox: tuple, swath_km: float):
+    """AOI box grown by half the swath width, so nadir tracks that merely pass nearby still count."""
+    west, south, east, north = bbox
+    half = swath_km / 2
+    lat_c = (south + north) / 2
+    d_lat = half / 111.32
+    d_lon = half / (111.32 * max(0.05, math.cos(math.radians(lat_c))))
+    return box(west - d_lon, south - d_lat, east + d_lon, north + d_lat)
 
 
 def _fetch_tle(norad_id: int) -> tuple[str, str, str]:
@@ -140,7 +151,6 @@ def get_overpasses(bbox: tuple, days: int = 7) -> list[dict]:
     west, south, east, north = bbox
     center_lat = (south + north) / 2
     center_lon = (west + east) / 2
-    aoi_poly = box(west, south, east, north)
     observer = wgs84.latlon(center_lat, center_lon)
 
     now = datetime.now(timezone.utc)
@@ -152,7 +162,8 @@ def get_overpasses(bbox: tuple, days: int = 7) -> list[dict]:
         try:
             _, line1, line2 = _fetch_tle(info["norad"])
             sat = EarthSatellite(line1, line2, name, _ts)
-            passes = _predict_passes(sat, observer, t_start, t_end, aoi_poly, name, info["daytime_only"])
+            passes = _predict_passes(sat, observer, t_start, t_end,
+                                     swath_aoi(bbox, info["swath_km"]), name, info["daytime_only"])
             all_passes.extend(passes)
         except Exception:
             continue  # skip platform if TLE unavailable

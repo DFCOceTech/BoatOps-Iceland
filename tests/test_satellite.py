@@ -17,7 +17,15 @@ from boatops.services import cdse_auth, celestrak, sentinel_hub
 
 client = TestClient(app)
 
-BBOX_QS = "west=9.5&south=53.5&east=15.0&north=56.0"
+@pytest.fixture(autouse=True)
+def _cdse_credentials(monkeypatch):
+    """Tests must not depend on a developer's local .env."""
+    from boatops.config import settings
+    monkeypatch.setattr(settings, "cdse_email", "test@example.com")
+    monkeypatch.setattr(settings, "cdse_password", "test-password")
+
+
+BBOX_QS = "west=-16.30&south=63.98&east=-16.06&north=64.10"
 
 _FAKE_TOKEN = "fake.jwt.token"
 _FAKE_PASSES = [
@@ -93,7 +101,7 @@ def test_overpasses_schema(mock_fn):
 def test_overpasses_days_param(mock_fn):
     resp = client.get(f"/api/satellite/overpasses?{BBOX_QS}&days=3")
     assert resp.status_code == 200
-    mock_fn.assert_called_once_with((9.5, 53.5, 15.0, 56.0), 3)
+    mock_fn.assert_called_once_with((-16.30, 63.98, -16.06, 64.10), 3)
 
 
 @patch.object(celestrak, "get_overpasses", side_effect=RuntimeError("TLE fetch failed"))
@@ -190,3 +198,78 @@ def test_s2_overlay_valid_png_magic(mock_token, mock_overlay):
 def test_s2_overlay_no_scene_returns_404(mock_token, mock_overlay):
     resp = client.get(f"/api/satellite/s2-overlay?{BBOX_QS}")
     assert resp.status_code == 404
+
+
+# ── Iceland additions: bbox limits, days_back, Sentinel-1 ────────────────────
+# REQ-IS-04 / SCENARIO-IS-04a..c (openspec/capabilities/iceland-site/spec.md)
+
+def test_s2_overlay_rejects_oversized_bbox():
+    resp = client.get("/api/satellite/s2-overlay?west=-30&south=60&east=-10&north=70")
+    assert resp.status_code == 422
+
+
+def test_s2_overlay_rejects_inverted_bbox():
+    resp = client.get("/api/satellite/s2-overlay?west=-16&south=64&east=-17&north=64.1")
+    assert resp.status_code == 422
+
+
+@patch.object(sentinel_hub, "get_s2_overlay", return_value=(_make_png_bytes(), _FAKE_SCENE))
+@patch.object(cdse_auth, "get_token", return_value=_FAKE_TOKEN)
+def test_s2_overlay_passes_days_back(mock_token, mock_overlay):
+    client.get(f"/api/satellite/s2-overlay?{BBOX_QS}&days_back=7")
+    assert mock_overlay.call_args.args[3] == 7
+
+
+@patch.object(sentinel_hub, "get_s1_overlay",
+              return_value=(_make_png_bytes(), {"scene_id": "S1A_IW_GRDH", "acquisition_time": "2026-05-01T07:00:00+00:00"}))
+@patch.object(cdse_auth, "get_token", return_value=_FAKE_TOKEN)
+def test_s1_overlay_returns_png_with_headers(mock_token, mock_overlay):
+    resp = client.get(f"/api/satellite/s1-overlay?{BBOX_QS}&days_back=3")
+    assert resp.status_code == 200
+    assert resp.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert resp.headers["x-scene-id"] == "S1A_IW_GRDH"
+    assert resp.headers["x-bbox"] == "-16.3,63.98,-16.06,64.1"
+
+
+@patch.object(sentinel_hub, "get_s1_overlay", side_effect=RuntimeError("No Sentinel-1 GRD scene"))
+@patch.object(cdse_auth, "get_token", return_value=_FAKE_TOKEN)
+def test_s1_overlay_no_scene_404(mock_token, mock_overlay):
+    assert client.get(f"/api/satellite/s1-overlay?{BBOX_QS}").status_code == 404
+
+
+def test_s1_overlay_without_credentials_503(monkeypatch):
+    from boatops.config import settings
+    monkeypatch.setattr(settings, "cdse_email", "")
+    assert client.get(f"/api/satellite/s1-overlay?{BBOX_QS}").status_code == 503
+
+
+@patch("httpx.get", return_value=_mock_odata_response([
+    {"Name": "S1A_IW_GRDH_1SDV_20260501", "ContentDate": {"Start": "2026-05-01T07:00:00.000Z"}}]))
+def test_find_best_s1_scene(mock_get):
+    scene = sentinel_hub.find_best_s1_scene(_FAKE_TOKEN, (-16.3, 63.98, -16.06, 64.1))
+    assert scene["scene_id"].startswith("S1A_IW_GRDH")
+    assert "SENTINEL-1" in mock_get.call_args.kwargs["params"]["$filter"]
+
+
+@patch("httpx.get", return_value=_mock_odata_response([]))
+def test_find_best_s1_scene_none(mock_get):
+    assert sentinel_hub.find_best_s1_scene(_FAKE_TOKEN, (-16.3, 63.98, -16.06, 64.1)) is None
+
+
+# ── swath-aware AOI (REQ-IS-03: passes must count when the swath, not the nadir track, reaches the site)
+
+def test_swath_aoi_grows_by_half_swath():
+    from boatops.services.celestrak import swath_aoi
+    poly = swath_aoi((-16.30, 63.98, -16.06, 64.10), 290)   # S2: ±145 km
+    w, s, e, n = poly.bounds
+    assert round((n - s - 0.12) / 2 * 111.32) == 145         # lat half-extension ≈ 145 km
+    assert (e - w) > 0.24 + 2 * 145 / 111.32                  # lon extension is larger at 64°N (1/cos)
+
+
+def test_nadir_track_100km_away_intersects_s2_swath_but_not_bare_box():
+    from shapely.geometry import LineString, box
+    from boatops.services.celestrak import swath_aoi
+    bbox = (-16.30, 63.98, -16.06, 64.10)
+    track = LineString([(-14.0, 63.0), (-14.0, 65.0)])        # ≈ 100 km east of the site
+    assert not track.intersects(box(*bbox))
+    assert track.intersects(swath_aoi(bbox, 290))

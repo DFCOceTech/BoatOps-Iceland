@@ -8,8 +8,6 @@ export interface Thresholds {
   windAmberMax:   number
   gustGreenMax:   number   // kt
   gustAmberMax:   number
-  hsGreenMax:     number   // m
-  hsAmberMax:     number
   cloudGreenMax:  number   // %
   cloudAmberMax:  number
   solarGreenMin:  number   // degrees elevation (higher = better)
@@ -19,12 +17,11 @@ export interface Thresholds {
 const DEFAULTS: Thresholds = {
   windGreenMax: 15, windAmberMax: 25,
   gustGreenMax: 20, gustAmberMax: 30,
-  hsGreenMax:  0.4, hsAmberMax:  0.8,
   cloudGreenMax: 20, cloudAmberMax: 50,
-  solarGreenMin: 20, solarAmberMin: 10,
+  solarGreenMin: 10, solarAmberMin: 3,   // high-latitude: low sun is normal
 }
 
-const LS_KEY = 'boatops-thresholds'
+const LS_KEY = 'boatops-iceland-thresholds'
 
 function loadThresholds(): Thresholds {
   try {
@@ -160,7 +157,6 @@ function SettingsModal({
             {([
               ['Wind',   'windGreenMax',  'windAmberMax',  'kt',  '≤',  '≤'],
               ['Gusts',  'gustGreenMax',  'gustAmberMax',  'kt',  '≤',  '≤'],
-              ['Waves',  'hsGreenMax',    'hsAmberMax',    'm',   '≤',  '≤'],
               ['Cloud',  'cloudGreenMax', 'cloudAmberMax', '%',   '≤',  '≤'],
               ['Solar',  'solarGreenMin', 'solarAmberMin', '°',   '≥',  '≥'],
             ] as const).map(([label, gField, aField, unit, gOp, aOp]) => (
@@ -214,7 +210,6 @@ export default function GoNoDashboard() {
   const statuses = {
     wind:  lowerIsBetter(values.windKt,       thresholds.windGreenMax,  thresholds.windAmberMax),
     gust:  lowerIsBetter(values.gustKt,       thresholds.gustGreenMax,  thresholds.gustAmberMax),
-    waves: lowerIsBetter(values.hsM,          thresholds.hsGreenMax,    thresholds.hsAmberMax),
     cloud: lowerIsBetter(values.cloudPct,     thresholds.cloudGreenMax, thresholds.cloudAmberMax),
     solar: higherIsBetter(values.solarElevDeg, thresholds.solarGreenMin, thresholds.solarAmberMin),
   }
@@ -235,11 +230,6 @@ export default function GoNoDashboard() {
       icon: '💨', label: 'Gusts',
       status: statuses.gust,
       display: values.gustKt !== null ? `${values.gustKt.toFixed(1)} kt` : '—',
-    },
-    {
-      icon: '🌊', label: 'Waves',
-      status: statuses.waves,
-      display: values.hsM !== null ? `${values.hsM.toFixed(2)} m Hs` : '—',
     },
     {
       icon: '☁', label: 'Cloud',

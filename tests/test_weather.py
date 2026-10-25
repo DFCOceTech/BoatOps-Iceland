@@ -111,7 +111,7 @@ def test_forecast_upstream_502():
 
 @patch("httpx.get", return_value=_ma_mock())
 def test_advisories_returns_geojson(mock_get):
-    resp = client.get("/api/weather/advisories?country=DE")
+    resp = client.get("/api/weather/advisories?country=IS")
     assert resp.status_code == 200
     body = resp.json()
     assert body["type"] == "FeatureCollection"
@@ -121,7 +121,7 @@ def test_advisories_returns_geojson(mock_get):
 
 @patch("httpx.get", return_value=_ma_mock())
 def test_advisories_feature_schema(mock_get):
-    resp = client.get("/api/weather/advisories?country=DE")
+    resp = client.get("/api/weather/advisories?country=IS")
     feature = resp.json()["features"][0]
     assert feature["type"] == "Feature"
     assert feature["geometry"] is None  # no polygon in Atom feed
@@ -132,7 +132,7 @@ def test_advisories_feature_schema(mock_get):
 
 @patch("httpx.get", return_value=_ma_mock())
 def test_advisories_parses_content(mock_get):
-    resp = client.get("/api/weather/advisories?country=DE")
+    resp = client.get("/api/weather/advisories?country=IS")
     props = resp.json()["features"][0]["properties"]
     assert props["event"] == "Wind"
     assert props["severity"] == "Moderate"
@@ -146,7 +146,7 @@ def test_advisories_empty_feed():
     mock.raise_for_status.return_value = None
     mock.content = empty_xml
     with patch("httpx.get", return_value=mock):
-        resp = client.get("/api/weather/advisories?country=DE")
+        resp = client.get("/api/weather/advisories?country=IS")
     assert resp.status_code == 200
     assert resp.json()["features"] == []
 
@@ -195,3 +195,13 @@ def test_wind_grid_hour_param(mock_get):
     resp = client.get(f"/api/weather/wind-grid?{_SMALL_GRID_QS}&hour=12")
     assert resp.status_code == 200
     assert "timestamp" in resp.json()
+
+
+def test_wind_grid_rejects_dense_grid():
+    # REQ-IS-04: 0.02° step over 1° x 1° = 51 x 51 points > cap
+    resp = client.get("/api/weather/wind-grid?west=-17&south=63.5&east=-16&north=64.5&step=0.02")
+    assert resp.status_code == 422
+
+
+def test_advisories_rejects_unknown_country():
+    assert client.get("/api/weather/advisories?country=XX").status_code == 422

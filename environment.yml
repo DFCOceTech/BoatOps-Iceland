@@ -1,39 +1,25 @@
-name: boatops
+name: boatops-iceland
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - python=3.11
-  - jupyter
-  - jupyterlab
-  - ipywidgets
-  - ipyleaflet
-  - nbmake
   - numpy
   - pandas
-  - xarray
-  - netcdf4
-  - scipy
-  - rasterio
+  - pillow
   - shapely
-  - pyproj
-  - cartopy
-  - matplotlib
   - requests
   - pyyaml
   - python-dotenv
+  - pytest
+  - ruff
+  - mypy
   - pip
   - pip:
       - cachetools
-      - cmocean
-      - folium
       - suncalc
       - skyfield
       - sgp4
-      - copernicusmarine
       - httpx
-      - fastapi
-      - uvicorn[standard]
-      - pydantic-settings
-      - anthropic
-      - pip-audit
+      - "fastapi>=0.115"
+      - "uvicorn[standard]"
+      - "pydantic-settings>=2.0"

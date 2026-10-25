@@ -16,10 +16,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type maplibregl from 'maplibre-gl'
 import { useMapContext } from '../context/MapContext'
 import { useTimeContext } from '../context/TimeContext'
-import { getWindGrid } from '../api/client'
+import { getWindGrid, AOI } from '../api/client'
 import type { WindGrid } from '../api/client'
 
-const AOI = { west: 9.5, south: 53.5, east: 15.0, north: 56.0 }
 const PARTICLE_COUNT  = 600
 const TARGET_PX_PER_S = 150
 const MIN_SPEED_FRAC  = 0.25

@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import LayerPanel from './LayerPanel'
-import IsobathLayer from './IsobathLayer'
-import GbifLayer from './GbifLayer'
-import OceanLayerPanel from './OceanLayerPanel'
 import WindLayerPanel from './WindLayerPanel'
-import CurrentsLayerPanel from './CurrentsLayerPanel'
 import WeatherPanel from './WeatherPanel'
-import WavePanel from './WavePanel'
 import SolarPanel from './SolarPanel'
 import SatellitePanel from './SatellitePanel'
+import SitePanel from './SitePanel'
+import ImageryPanel from './ImageryPanel'
+import MarinePanel from './MarinePanel'
+import { useSite } from '../context/SiteContext'
 import GoNoDashboard from './GoNoDashboard'
-import StationMarkers from './StationMarkers'
-import MapClickPanel from './MapClickPanel'
 import { GoNoGoProvider } from '../context/GoNoGoContext'
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
+  const { active, bbox } = useSite()
+  // Site-dependent panels fetch on mount, so re-key them when the work site moves.
+  const siteKey = `${active.lat.toFixed(4)},${active.lon.toFixed(4)}`
+  const areaKey = `${siteKey}:${bbox.west},${bbox.east}`
 
   return (
     <>
@@ -69,42 +70,19 @@ export default function Sidebar() {
         }}>
           <h1 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: '#f1f5f9',
             borderBottom: '1px solid #2d3148', paddingBottom: 12 }}>
-            BoatOps
+            BoatOps Iceland
+            <span style={{ fontSize: 11, fontWeight: 400, color: '#64748b', marginLeft: 8 }}>Jökulsárlón</span>
           </h1>
           <GoNoGoProvider>
+            <SitePanel />
             <GoNoDashboard />
-            <MapClickPanel />
             <LayerPanel />
-            <IsobathLayer />
-            <StationMarkers />
-
-            {/* Biological occurrence layers (GBIF, field observations only) */}
-            <section style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                color: '#64748b', textTransform: 'uppercase', margin: '0 0 6px' }}>
-                Biological Layers
-              </p>
-              <GbifLayer
-                taxonKey={2863967}
-                label="Zostera marina (seagrass)"
-                color="#22d3ee"
-                gbifUrl="https://www.gbif.org/species/2863967"
-              />
-              <GbifLayer
-                taxonKey={8222574}
-                label="Fucus vesiculosus (macroalgae)"
-                color="#fb923c"
-                gbifUrl="https://www.gbif.org/species/8222574"
-              />
-            </section>
-
             <WindLayerPanel />
-            <CurrentsLayerPanel />
-            <OceanLayerPanel />
-            <WeatherPanel />
-            <WavePanel />
-            <SolarPanel />
-            <SatellitePanel />
+            <WeatherPanel key={`w-${siteKey}`} />
+            <MarinePanel key={`m-${siteKey}`} />
+            <SolarPanel key={`s-${siteKey}`} />
+            <ImageryPanel key={`i-${areaKey}`} />
+            <SatellitePanel key={`p-${areaKey}`} />
           </GoNoGoProvider>
         </div>
       </aside>

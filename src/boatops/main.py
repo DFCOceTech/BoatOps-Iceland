@@ -4,9 +4,9 @@ from fastapi.responses import JSONResponse
 
 from boatops import __version__
 from boatops.config import settings
-from boatops.routers import map_layers, satellite, solar, waves, weather
+from boatops.routers import marine, satellite, solar, weather
 
-app = FastAPI(title="BoatOps", version=__version__)
+app = FastAPI(title="BoatOps Iceland", version=__version__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,7 +27,6 @@ async def health():
 
 
 app.include_router(weather.router)
-app.include_router(waves.router)
+app.include_router(marine.router)
 app.include_router(solar.router)
 app.include_router(satellite.router)
-app.include_router(map_layers.router)

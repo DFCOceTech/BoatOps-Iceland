@@ -5,10 +5,10 @@ import {
 } from 'recharts'
 import { useFetch } from '../hooks/useFetch'
 import { getWeatherForecast, getWeatherAdvisories } from '../api/client'
+import { useSite } from '../context/SiteContext'
 import { useGoNoGo } from '../context/GoNoGoContext'
 import { useTimeContext } from '../context/TimeContext'
 
-const CENTER = { lat: 54.18, lon: 12.08 }
 
 function WindArrow({ degrees }: { degrees: number }) {
   const rad = (degrees * Math.PI) / 180
@@ -60,8 +60,9 @@ const S: Record<string, React.CSSProperties> = {
 }
 
 export default function WeatherPanel() {
+  const { active: CENTER } = useSite()
   const forecast = useFetch(() => getWeatherForecast(CENTER.lat, CENTER.lon))
-  const advisories = useFetch(() => getWeatherAdvisories('DE'))
+  const advisories = useFetch(() => getWeatherAdvisories('IS'))
   const { update, refreshSignal } = useGoNoGo()
   const { forecastHour } = useTimeContext()
 

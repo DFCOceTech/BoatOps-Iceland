@@ -14,6 +14,7 @@ _NS = {
     "cap": "urn:oasis:names:tc:emergency:cap:1.2",
 }
 _COUNTRY_SLUG = {
+    "IS": "iceland",
     "DE": "germany",
     "DK": "denmark",
     "SE": "sweden",

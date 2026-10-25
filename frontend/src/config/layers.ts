@@ -19,12 +19,24 @@ const wms = (baseUrl: string, layer: string, extra = '') =>
 
 export const BASE_LAYER_DEFS: RasterLayerDef[] = [
   {
-    id: 'seamap',
-    label: 'OpenSeaMap Seamarks',
-    defaultVisible: true,
+    id: 'esri-imagery',
+    label: 'Esri World Imagery (basemap photo — date varies)',
+    defaultVisible: false,
     source: {
       type: 'raster',
-      // tileSize 307 (≈ 256 × 1.2) renders tiles ~20% larger, scaling up seamark icons
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      maxzoom: 18,
+      attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
+    },
+    paint: { 'raster-opacity': 0.9 },
+  },
+  {
+    id: 'seamap',
+    label: 'OpenSeaMap Seamarks',
+    defaultVisible: false,
+    source: {
+      type: 'raster',
       tiles: ['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png'],
       tileSize: 307,
       attribution: '© <a href="https://www.openseamap.org">OpenSeaMap</a> contributors',
@@ -33,7 +45,7 @@ export const BASE_LAYER_DEFS: RasterLayerDef[] = [
   },
   {
     id: 'gebco',
-    label: 'GEBCO Bathymetry',
+    label: 'GEBCO Bathymetry (coarse — not valid inside the lagoon)',
     defaultVisible: false,
     source: {
       type: 'raster',
@@ -42,21 +54,5 @@ export const BASE_LAYER_DEFS: RasterLayerDef[] = [
       attribution: '© <a href="https://www.gebco.net">GEBCO/BODC</a>',
     },
     paint: { 'raster-opacity': 0.65 },
-  },
-  {
-    id: 'emodnet',
-    label: 'EMODnet Seabed Habitats',
-    defaultVisible: false,
-    source: {
-      type: 'raster',
-      tiles: [wms(
-        'https://ows.emodnet-seabedhabitats.eu/geoserver/emodnet_view/wms',
-        'eusm_helcom_group',
-      )],
-      tileSize: 256,
-      attribution: '© <a href="https://www.emodnet-seabedhabitats.eu">EMODnet Seabed Habitats</a>',
-    },
-    paint: { 'raster-opacity': 0.7 },
-    // Legend and click interaction handled by EmodnetPanel (LayerPanel special-cases this id)
   },
 ]
