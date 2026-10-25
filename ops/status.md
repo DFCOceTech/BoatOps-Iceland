@@ -11,7 +11,7 @@
 - `docker compose up --build` (no Docker on the authoring Mac) — also covers the shapely/frontend fixes from BoatOps PR #1.
 - Live Sentinel-1/2 retrieval (needs CDSE credentials): the S1 Sentinel Hub request (`sentinel-1-grd`, `SIGMA0_ELLIPSOID`, orthorectify, DV) and OData `contains(Name,'GRD')` filter are unit-tested with mocks only. **First thing to test with real credentials.**
 - Local GeoTIFFs verified only with synthetic files (EPSG 4326 / 32628) — try a real drone ortho (with overviews) and a real sonar raster; report any CRS/compression that fails.
-- Firefox/WebKit Playwright projects (browser binaries mismatched on the authoring machine).
+- Automated Firefox/WebKit Playwright projects (browser binaries would not launch on the authoring machine). Manual testing in Firefox by the project owner covered the app end to end (2026-10-25); Safari/WebKit untested.
 
 ## What's Next
 1. Run with real CDSE credentials; tune S1 evalscript/look-back on a recent lagoon scene.
