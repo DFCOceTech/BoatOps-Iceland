@@ -14,6 +14,6 @@
 - Automated Firefox/WebKit Playwright projects (browser binaries would not launch on the authoring machine). Manual testing in Firefox by the project owner covered the app end to end (2026-10-25); Safari/WebKit untested.
 
 ## What's Next
-1. Run with real CDSE credentials; tune S1 evalscript/look-back on a recent lagoon scene.
+1. S1 overlay: EW HH+HV windows tuned on a live scene (2026-11-14); **IW VV+VH windows are untuned estimates** — check on the next IW scene. Consider a per-scene percentile stretch.
 2. `docker compose up --build` on a clean machine.
 3. Optional: ice-chart overlays (IMO/Veðurstofa), drone-flight checklist, GPX export of sites.

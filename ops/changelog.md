@@ -6,6 +6,11 @@ Rolling 2-week work log. Remove entries older than 2 weeks.
 *Instruction: "add the webcam at the lagoon" → Live From Iceland (no lagoon camera exists there now) → "let's try" SkylineWebcams, shown "as a map marker" (user).*
 - `WebcamMarkers` + `config/webcams.ts`: camera marker at the lagoon, popup links out to SkylineWebcams in a new tab. Link-out only: the site sends `X-Frame-Options: SAMEORIGIN` and a tokenised stream URL. REQ-IS-13 / SCENARIO-IS-13a; E2E-015. Marker position approximate.
 
+## 2026-11-14 — SAR overlay contrast
+*Instruction: "The SAR overlay does not provide enough contrast to be useful" (user, on an EW HH+HV scene).*
+- Root cause: one shared −25..0 dB window crushed EW HV (median ≈ −25 dB, near noise floor) to black → flat magenta. Fixed with per-mode windows and a co−cross blue band (`_SAR_WINDOWS` in `sentinel_hub.py`); REQ-IS-06 / SCENARIO-IS-06d; 3 new tests. Verified live against the 2026-11-14 07:48 UTC EW scene.
+- Also diagnosed 404s: Vite proxy defaulted to :8000 (held by an unrelated oMLX server) — no code change; use `BOATOPS_API=http://localhost:8001 npm run dev`.
+
 ## 2026-10-25 — Iceland (Jökulsárlón) fork
 *Instruction: "create a plain fork with a bespoke setup for the lagoon; ice is mobile, deployment site changes daily."*
 - Forked from BoatOps `fix/docker-build-frontend-shapely`; removed CMEMS Baltic code (waves, currents, SST, salinity, chlorophyll, bathymetry, isobaths), EMODnet, GBIF, MARNET stations, click assessment.
