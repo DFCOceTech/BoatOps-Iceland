@@ -2,6 +2,10 @@
 
 Rolling 2-week work log. Remove entries older than 2 weeks.
 
+## 2026-11-14 — Lagoon webcam marker
+*Instruction: "add the webcam at the lagoon" → Live From Iceland (no lagoon camera exists there now) → "let's try" SkylineWebcams, shown "as a map marker" (user).*
+- `WebcamMarkers` + `config/webcams.ts`: camera marker at the lagoon, popup links out to SkylineWebcams in a new tab. Link-out only: the site sends `X-Frame-Options: SAMEORIGIN` and a tokenised stream URL. REQ-IS-13 / SCENARIO-IS-13a; E2E-015. Marker position approximate.
+
 ## 2026-10-25 — Iceland (Jökulsárlón) fork
 *Instruction: "create a plain fork with a bespoke setup for the lagoon; ice is mobile, deployment site changes daily."*
 - Forked from BoatOps `fix/docker-build-frontend-shapely`; removed CMEMS Baltic code (waves, currents, SST, salinity, chlorophyll, bathymetry, isobaths), EMODnet, GBIF, MARNET stations, click assessment.
