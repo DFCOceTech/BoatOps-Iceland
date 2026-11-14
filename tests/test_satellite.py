@@ -408,3 +408,21 @@ def test_s1_overlay_request_uses_scene_polarisation_and_bands(mock_find, mock_po
     assert flt["polarization"] == "DH" and flt["acquisitionMode"] == "EW"
     assert flt["timeRange"]["from"] == "2026-10-24T18:40:53Z"            # window start - 30 s
     assert '"HH"' in body["evalscript"] and '"HV"' in body["evalscript"] and "VV" not in body["evalscript"]
+
+
+# REQ-IS-06 / SCENARIO-IS-06d: SAR overlay uses per-mode dB windows and a co-minus-cross blue band,
+# so EW HH+HV (cross-pol near the noise floor) is not crushed to a flat colour.
+def test_sar_evalscript_ew_uses_ew_windows_and_ratio_band():
+    es = sentinel_hub._sar_evalscript("HH", "HV", "EW")
+    assert "n(a,-18.0,0.0)" in es and "n(b,-35.0,-12.0)" in es and "n(a-b,8.0,30.0)" in es
+    assert "-25" not in es      # old shared window must be gone
+
+
+def test_sar_evalscript_iw_differs_from_ew():
+    assert sentinel_hub._sar_evalscript("VV", "VH", "IW") != sentinel_hub._sar_evalscript("VV", "VH", "EW")
+    assert "n(b,-32.0,-10.0)" in sentinel_hub._sar_evalscript("VV", "VH", "IW")
+
+
+def test_sar_evalscript_single_pol_is_greyscale():
+    es = sentinel_hub._sar_evalscript("HH", "HH", "EW")
+    assert "return[a,a,a,s.dataMask]" in es

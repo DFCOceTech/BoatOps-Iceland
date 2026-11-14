@@ -59,12 +59,35 @@ _S1_POL = {   # (S|D, H|V) -> (Process-API polarization, co-pol band, cross-pol 
 }
 
 
-def _sar_evalscript(co: str, cross: str) -> str:
-    return (
+# dB display windows per acquisition mode: (co-pol lo, hi), (cross-pol lo, hi), (co-minus-cross lo, hi).
+# EW HH+HV (sea-ice mode): HV sits near the noise floor (median ~-25 dB, floor ~-45), so the old shared
+# -25..0 dB window crushed it to black and left a flat magenta. Windows below span ~p1-p99 of a real
+# Jokulsarlon scene (2026-11-14). IW VV+VH windows are typical-range estimates, not yet tuned on data.
+_SAR_WINDOWS = {
+    "EW": ((-18.0, 0.0), (-35.0, -12.0), (8.0, 30.0)),
+    "IW": ((-22.0, 0.0), (-32.0, -10.0), (5.0, 25.0)),
+}
+
+
+def _sar_evalscript(co: str, cross: str, mode: str = "IW") -> str:
+    """R=co-pol, G=cross-pol, B=co-minus-cross (dB), each stretched with its own mode-specific window.
+
+    Single-pol products (co == cross) render as greyscale of the one band.
+    """
+    (c_lo, c_hi), (x_lo, x_hi), (r_lo, r_hi) = _SAR_WINDOWS.get(mode, _SAR_WINDOWS["IW"])
+    head = (
         "//VERSION=3\n"
         f"function setup(){{return{{input:[\"{co}\",\"{cross}\",\"dataMask\"],output:{{bands:4}}}};}}\n"
-        "function db(x){return Math.min(1,Math.max(0,(10*Math.log(Math.max(x,1e-5))/Math.LN10+25)/25));}\n"
-        f"function evaluatePixel(s){{var a=db(s.{co}),b=db(s.{cross});return[a,b,a*0.5+b*0.5,s.dataMask];}}\n"
+        "function dB(x){return 10*Math.log(Math.max(x,1e-5))/Math.LN10;}\n"
+        "function n(v,lo,hi){return Math.min(1,Math.max(0,(v-lo)/(hi-lo)));}\n"
+    )
+    if co == cross:
+        return head + (
+            f"function evaluatePixel(s){{var a=n(dB(s.{co}),{c_lo},{c_hi});return[a,a,a,s.dataMask];}}\n"
+        )
+    return head + (
+        f"function evaluatePixel(s){{var a=dB(s.{co}),b=dB(s.{cross});"
+        f"return[n(a,{c_lo},{c_hi}),n(b,{x_lo},{x_hi}),n(a-b,{r_lo},{r_hi}),s.dataMask];}}\n"
     )
 
 
@@ -173,7 +196,7 @@ def get_s1_overlay(token: str, bbox: tuple, days_back: int = 14) -> tuple[bytes,
     """Return (png_bytes, metadata) for the latest Sentinel-1 SAR data-take over bbox.
 
     Radar sees through cloud and darkness — the primary layer for locating mobile ice.
-    Colours: R=co-pol (VV or HH), G=cross-pol (VH or HV), dB-scaled. Calm open water is dark; ice and
+    Colours: R=co-pol (VV or HH), G=cross-pol (VH or HV), B=co-minus-cross, dB-stretched per mode. Calm open water is dark; ice and
     rough water are bright. HH (EW mode) separates ice from water differently than VV — see `mode`.
     """
     scene = find_best_s1_scene(token, bbox, days_back)
@@ -206,7 +229,7 @@ def get_s1_overlay(token: str, bbox: tuple, days_back: int = 14) -> tuple[bytes,
                 "width": 512, "height": 512,
                 "responses": [{"identifier": "default", "format": {"type": "image/png"}}],
             },
-            "evalscript": _sar_evalscript(scene["co"], scene["cross"]),
+            "evalscript": _sar_evalscript(scene["co"], scene["cross"], scene["mode"]),
         },
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         timeout=60,
