@@ -531,3 +531,18 @@ test.describe('E2E-009: Sidebar collapse/expand', () => {
     await expect(page.getByRole('heading', { name: 'BoatOps' })).toBeVisible()
   })
 })
+
+test.describe('E2E-015: Lagoon webcam marker (REQ-IS-13)', () => {
+  test('marker opens popup linking out to SkylineWebcams', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/')
+    const marker = page.locator('.webcam-marker')
+    await expect(marker).toHaveCount(1, { timeout: 8_000 })
+    await marker.dispatchEvent('click')   // bypass WebGL pointer interception
+    const link = page.getByRole('link', { name: /Open live view/ })
+    await expect(link).toBeVisible()
+    await expect(link).toHaveAttribute('href', /skylinewebcams\.com\/en\/webcam\/iceland\/austurland\/hofn\/jokulsarlon\.html/)
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(link).toHaveAttribute('rel', /noopener/)
+  })
+})

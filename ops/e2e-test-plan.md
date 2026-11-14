@@ -58,6 +58,7 @@ cd frontend && npm run build   # runs tsc -b
 | E2E-008a | Error: weather 500 → error in panel, others unaffected (NFR-06) | 3 | All | ✅ PASS |
 | E2E-008b | Error: weather failure → verdict stays AWAITING DATA | 3 | All | ✅ PASS |
 | E2E-009 | Sidebar collapse/expand via dispatchEvent (bypasses WebGL pointer interception) | 3 | All | ✅ PASS |
+| E2E-015 | Lagoon webcam marker: popup link to SkylineWebcams, new tab, noopener (REQ-IS-13) | 3 | Chromium | ✅ PASS |
 
 **Total: 42 tests (14 scenarios × 3 browsers) — 42/42 PASS**
 

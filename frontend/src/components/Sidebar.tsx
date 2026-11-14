@@ -8,6 +8,7 @@ import SitePanel from './SitePanel'
 import ImageryPanel from './ImageryPanel'
 import MarinePanel from './MarinePanel'
 import LocalConditionsPanel from './LocalConditionsPanel'
+import WebcamMarkers from './WebcamMarkers'
 import TidePanel from './TidePanel'
 import PlannedPanel from './PlannedPanel'
 import LocalRasterPanel from './LocalRasterPanel'
@@ -89,6 +90,7 @@ export default function Sidebar() {
             <SolarPanel key={`s-${siteKey}`} />
             <ImageryPanel key={`i-${areaKey}`} />
             <LocalRasterPanel />
+            <WebcamMarkers />
             <SatellitePanel key={`p-${areaKey}`} />
             <PlannedPanel />
           </GoNoGoProvider>
